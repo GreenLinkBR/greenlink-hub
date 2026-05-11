@@ -1,96 +1,83 @@
+# Fase 2 — Módulos operacionais do GreenLink ADM
 
-# GreenLink ADM — Fase 1: Shell + CRM/Comercial
+A Fase 1 entregou Shell + CRM/Comercial (Leads, Clientes, Pipeline, Orçamentos, Pedidos, Catálogo). Agora vamos destravar os módulos marcados como "em breve" na sidebar, mantendo a abordagem **somente frontend com mocks persistidos (Zustand + localStorage)**, em português (Brasil), responsivo desktop/mobile.
 
-Construir a base do GreenLink ADM com layout completo responsivo (desktop e mobile) e o primeiro módulo funcional (CRM e Comercial), usando dados mockados em memória. Backend (Lovable Cloud) fica para fase posterior, quando a UX estiver validada.
+## Escopo desta fase
 
-## Identidade visual
+### 1. Contratos & Recorrência (`/contratos`)
+- Lista de contratos vinculados a clientes (a partir de pedidos aprovados ou avulsos).
+- Campos: número, cliente, vigência (início/fim), valor mensal, indexador (IPCA/IGPM/fixo), status (ativo, suspenso, encerrado), próximo reajuste.
+- Detalhe `/contratos/$id` com cronograma de faturas geradas (12 meses à frente, mock).
+- Ação "Gerar fatura do mês" → cria lançamento no Financeiro (contas a receber).
 
-- Logo GreenLink (uploads enviados) em `src/assets/`.
-- Paleta verde da marca como cor primária, neutros claros, suporte a dark mode.
-- Fontes: display + body distintas (não Inter/Poppins). Headings com peso forte; body legível.
-- Tokens semânticos em `src/styles.css` (oklch): `--primary` (verde GreenLink), `--success`, `--warning`, `--destructive`, gradientes e sombras.
-- Densidade administrativa: tabelas compactas, cards informativos, hierarquia clara.
+### 2. Ordens de Serviço (`/os`)
+- Lista filtrável por status (aberta, em execução, concluída, cancelada) e técnico.
+- Cartão mobile-first com prioridade, cliente, endereço, SLA.
+- Detalhe `/os/$id`: dados do cliente, checklist de tarefas, ativos vinculados, anexos mock, registro de horas, assinatura/observações finais.
+- Criação rápida a partir de pedido ou contrato.
 
-## Layout responsivo
+### 3. Ativos (`/ativos`)
+- Inventário de equipamentos instalados em clientes (sensores, gateways, estações).
+- Campos: tag, modelo, cliente, localização, status (ativo, manutenção, baixado), última leitura mock.
+- Vínculo bidirecional com OS (histórico de intervenções).
 
-Desktop (≥768px):
-- Sidebar colapsável (shadcn `Sidebar`, `collapsible="icon"`) com logo no topo e grupos de navegação por macrodomínio.
-- Header com `SidebarTrigger`, busca global, troca de tema, menu do usuário.
+### 4. Estoque (`/estoque`)
+- Saldo por item de catálogo (produto/kit), com movimentações (entrada, saída, ajuste, reserva por OS).
+- Indicadores de estoque mínimo e alertas.
+- Tela de movimentação rápida.
 
-Mobile (<768px):
-- Sidebar vira `offcanvas` (drawer).
-- Bottom navigation fixa com os 5 atalhos mais usados (Dashboard, Clientes, Pipeline, Orçamentos, Mais).
-- Header compacto com logo, busca e menu.
+### 5. Financeiro (`/financeiro`)
+- Abas: **Contas a Receber**, **Contas a Pagar**, **Fluxo de Caixa**.
+- Lançamentos com cliente/fornecedor, vencimento, valor, status (em aberto, pago, vencido), origem (contrato, pedido, manual).
+- KPIs no topo (a receber 30d, a pagar 30d, inadimplência, saldo previsto).
+- Marcar como pago / estornar.
 
-```text
-desktop                          mobile
-┌──────┬───────────────────┐     ┌─────────────────┐
-│ side │ header            │     │ header          │
-│ bar  ├───────────────────┤     ├─────────────────┤
-│      │                   │     │                 │
-│      │ conteúdo          │     │ conteúdo        │
-│      │                   │     │                 │
-└──────┴───────────────────┘     ├─────────────────┤
-                                 │ bottom nav      │
-                                 └─────────────────┘
+### 6. Suporte (`/suporte`)
+- Tickets vinculados a cliente, com prioridade, canal (email, whatsapp, portal), status (novo, em andamento, aguardando cliente, resolvido).
+- Detalhe `/suporte/$id` com thread de mensagens mock e SLA.
+- Conversão de ticket em OS.
+
+### 7. Dashboard ampliado
+- Adicionar widgets dos novos módulos (OS abertas, faturas vencendo, tickets críticos, estoque crítico).
+
+### 8. Ajustes de Shell
+- Remover marcação "em breve" da sidebar; adicionar itens reais com ícones.
+- Atualizar `bottomNav` (mobile) com 5 atalhos finais: Dashboard, Pipeline, OS, Financeiro, Mais (drawer).
+- Pesquisa global no header com resultados cruzados (cliente, OS, contrato, ticket).
+
+## Arquitetura
+
 ```
-
-## Estrutura de rotas (TanStack Router)
-
-```text
+src/lib/mock/
+  types.ts        # + Contrato, OS, Ativo, Movimentacao, Lancamento, Ticket
+  store.ts        # novos slices + ações + seeds
 src/routes/
-  __root.tsx              layout (sidebar + header + bottom nav)
-  index.tsx               redirect → /dashboard
-  login.tsx               tela de login (mock)
-  dashboard.tsx           visão geral
-  clientes.tsx            lista
-  clientes.$id.tsx        detalhe (abas: dados, contatos, oportunidades, histórico)
-  leads.tsx               lista de leads
-  pipeline.tsx            kanban de oportunidades
-  orcamentos.tsx          lista
-  orcamentos.novo.tsx     criação
-  orcamentos.$id.tsx      detalhe / aprovação
-  pedidos.tsx             lista (placeholder funcional)
-  pedidos.$id.tsx         detalhe (placeholder)
-  catalogo.tsx            produtos/serviços/kits (placeholder lista)
-  configuracoes.tsx       perfil, tema, permissões (mock)
+  contratos.tsx / contratos.$id.tsx
+  os.tsx / os.$id.tsx / os.novo.tsx
+  ativos.tsx / ativos.$id.tsx
+  estoque.tsx
+  financeiro.tsx                # tabs internas
+  suporte.tsx / suporte.$id.tsx
+src/components/
+  modules/...                   # cards e formulários reutilizáveis
 ```
-
-Itens de menu dos demais macrodomínios (Contratos, OS, Estoque, Financeiro, Suporte) ficam visíveis na sidebar como "Em breve" para sinalizar o roadmap, sem rota navegável ainda.
-
-## Módulo CRM/Comercial — funcionalidades nesta fase
-
-Dados em memória via Zustand (com persistência em `localStorage` para sobreviver a reload). Seed inicial com clientes/leads/orçamentos de exemplo.
-
-- **Dashboard**: KPIs (leads novos, oportunidades em aberto, orçamentos pendentes, ticket médio), gráfico de funil, lista de OS/orçamentos recentes (placeholders ligados aos mocks existentes).
-- **Leads**: CRUD, origem, status, conversão em oportunidade.
-- **Clientes / Contatos**: CRUD com PJ/PF, múltiplos contatos, endereço, observações.
-- **Pipeline (Kanban)**: colunas por estágio (Novo, Qualificado, Proposta, Negociação, Ganho, Perdido), drag-and-drop entre colunas (`@dnd-kit/core`), card com valor e cliente.
-- **Orçamentos**: criação a partir de cliente + itens do catálogo (mock), snapshot de preço, descontos, total, status (rascunho, enviado, aprovado, recusado), conversão em pedido (gera registro no mock de pedidos).
-- **Catálogo**: lista simples de produtos/serviços/kits para alimentar orçamento.
-- **Pedidos**: lista somente leitura nesta fase, alimentada por orçamentos aprovados.
 
 ## Detalhes técnicos
+- **Persistência**: estender o `useAppStore` existente; manter chave `greenlink-adm-v1` com migração leve (campos opcionais).
+- **Cross-links**: contratos → faturas (financeiro); pedidos → OS; OS → ativos + estoque (reserva); contratos/pedidos → financeiro.
+- **UI**: shadcn `Tabs`, `Sheet`, `Dialog`, `Table` (desktop) + cards (mobile <768px), `Badge` para status, `Progress` para SLA.
+- **Formulários**: `react-hook-form` + `zod` (já no projeto).
+- **Datas**: `date-fns` para cálculos de vencimento/SLA/próximo reajuste.
+- **SEO/head()**: cada rota com `title` próprio.
 
-- Stack atual: TanStack Start + React 19 + Vite + Tailwind v4 + shadcn (mantido).
-- Estado: `zustand` + `zustand/middleware` (persist) — nova dependência.
-- Drag & drop kanban: `@dnd-kit/core` + `@dnd-kit/sortable` — novas dependências.
-- Datas: `date-fns` (já no projeto via shadcn).
-- Validação de formulários: `react-hook-form` + `zod` (já presentes).
-- Tabelas: shadcn `Table` + filtros locais; sem dependência extra.
-- Tema (light/dark): provider próprio + token toggle.
-- SEO: `head()` por rota com title/description em PT-BR.
-- Mock layer isolado em `src/lib/mock/` (stores Zustand por entidade) para troca futura por chamadas Cloud sem refactor de UI.
+## Critérios de aceitação
+- Todas as rotas acima navegáveis a partir da sidebar (desktop) e do drawer "Mais" (mobile).
+- Fluxos demonstráveis: aprovar orçamento → gerar pedido → criar OS → consumir item do estoque → encerrar OS → gerar contrato → faturar mês → registrar pagamento.
+- Layout testado em 360 / 768 / 1280 px.
+- Dados persistem em localStorage e seeds iniciais demonstram cada módulo.
+- Tema claro/escuro mantidos.
 
-## Fora desta fase (próximos passos)
-
-- Lovable Cloud (auth real, RLS, persistência), módulos Contratos/Locação, OS/Agenda, Ativos, Estoque, Produção, Financeiro, Suporte. Já mapeados na sidebar como "Em breve".
-
-## Critérios de aceite
-
-- Layout funcional em 360px, 768px e 1280px sem quebras.
-- Sidebar colapsável no desktop; drawer + bottom nav no mobile.
-- Logo GreenLink visível no header/sidebar e no login.
-- Fluxo demonstrável: criar lead → converter em oportunidade → mover no pipeline → gerar orçamento → aprovar → ver pedido criado.
-- Dados persistem entre reloads via localStorage.
-- Tema claro/escuro funcionando.
+## Fora de escopo (próxima fase)
+- Backend real (Lovable Cloud), autenticação com RBAC, multi-tenant.
+- Integrações externas (NF-e, gateway de pagamento, WhatsApp).
+- Produção / OPME / módulos P1 do PRD.
