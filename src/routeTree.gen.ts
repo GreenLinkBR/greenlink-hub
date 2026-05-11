@@ -15,6 +15,7 @@ import { Route as OrcamentosRouteImport } from './routes/orcamentos'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
@@ -22,6 +23,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PedidosIdRouteImport } from './routes/pedidos.$id'
 import { Route as OrcamentosNovoRouteImport } from './routes/orcamentos.novo'
 import { Route as OrcamentosIdRouteImport } from './routes/orcamentos.$id'
+import { Route as ContratosIdRouteImport } from './routes/contratos.$id'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 
 const PipelineRoute = PipelineRouteImport.update({
@@ -52,6 +54,11 @@ const LeadsRoute = LeadsRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContratosRoute = ContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
@@ -89,6 +96,11 @@ const OrcamentosIdRoute = OrcamentosIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => OrcamentosRoute,
 } as any)
+const ContratosIdRoute = ContratosIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ContratosRoute,
+} as any)
 const ClientesIdRoute = ClientesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -100,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
+  '/contratos': typeof ContratosRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
@@ -107,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
   '/pedidos/$id': typeof PedidosIdRoute
@@ -116,6 +130,7 @@ export interface FileRoutesByTo {
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
+  '/contratos': typeof ContratosRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
@@ -123,6 +138,7 @@ export interface FileRoutesByTo {
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
   '/pedidos/$id': typeof PedidosIdRoute
@@ -133,6 +149,7 @@ export interface FileRoutesById {
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
+  '/contratos': typeof ContratosRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
@@ -140,6 +157,7 @@ export interface FileRoutesById {
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
   '/pedidos/$id': typeof PedidosIdRoute
@@ -151,6 +169,7 @@ export interface FileRouteTypes {
     | '/catalogo'
     | '/clientes'
     | '/configuracoes'
+    | '/contratos'
     | '/dashboard'
     | '/leads'
     | '/login'
@@ -158,6 +177,7 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/clientes/$id'
+    | '/contratos/$id'
     | '/orcamentos/$id'
     | '/orcamentos/novo'
     | '/pedidos/$id'
@@ -167,6 +187,7 @@ export interface FileRouteTypes {
     | '/catalogo'
     | '/clientes'
     | '/configuracoes'
+    | '/contratos'
     | '/dashboard'
     | '/leads'
     | '/login'
@@ -174,6 +195,7 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/clientes/$id'
+    | '/contratos/$id'
     | '/orcamentos/$id'
     | '/orcamentos/novo'
     | '/pedidos/$id'
@@ -183,6 +205,7 @@ export interface FileRouteTypes {
     | '/catalogo'
     | '/clientes'
     | '/configuracoes'
+    | '/contratos'
     | '/dashboard'
     | '/leads'
     | '/login'
@@ -190,6 +213,7 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/clientes/$id'
+    | '/contratos/$id'
     | '/orcamentos/$id'
     | '/orcamentos/novo'
     | '/pedidos/$id'
@@ -200,6 +224,7 @@ export interface RootRouteChildren {
   CatalogoRoute: typeof CatalogoRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  ContratosRoute: typeof ContratosRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
@@ -252,6 +277,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contratos': {
+      id: '/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
+      preLoaderRoute: typeof ContratosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/configuracoes': {
       id: '/configuracoes'
       path: '/configuracoes'
@@ -301,6 +333,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrcamentosIdRouteImport
       parentRoute: typeof OrcamentosRoute
     }
+    '/contratos/$id': {
+      id: '/contratos/$id'
+      path: '/$id'
+      fullPath: '/contratos/$id'
+      preLoaderRoute: typeof ContratosIdRouteImport
+      parentRoute: typeof ContratosRoute
+    }
     '/clientes/$id': {
       id: '/clientes/$id'
       path: '/$id'
@@ -321,6 +360,18 @@ const ClientesRouteChildren: ClientesRouteChildren = {
 
 const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
   ClientesRouteChildren,
+)
+
+interface ContratosRouteChildren {
+  ContratosIdRoute: typeof ContratosIdRoute
+}
+
+const ContratosRouteChildren: ContratosRouteChildren = {
+  ContratosIdRoute: ContratosIdRoute,
+}
+
+const ContratosRouteWithChildren = ContratosRoute._addFileChildren(
+  ContratosRouteChildren,
 )
 
 interface OrcamentosRouteChildren {
@@ -353,6 +404,7 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogoRoute: CatalogoRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  ContratosRoute: ContratosRouteWithChildren,
   DashboardRoute: DashboardRoute,
   LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
@@ -363,3 +415,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
