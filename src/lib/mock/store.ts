@@ -562,6 +562,24 @@ export const calcEstoque = (itemId: string, movs: Movimentacao[]) => {
     }, 0);
 };
 
+/** Status visual de um lançamento (deriva "vencido" pela data, sem persistir). */
+export const visualLancamentoStatus = (l: Lancamento): LancamentoStatusVisual => {
+  if (l.status === "aberto" && new Date(l.vencimento) < new Date()) return "vencido";
+  return l.status;
+};
+
+/** Próxima data de vencimento dada a frequência de cobrança. */
+const proximaCobranca = (freq: ContratoFrequencia, base = new Date()) => {
+  const map: Record<ContratoFrequencia, number> = {
+    unica: 0,
+    mensal: 1,
+    trimestral: 3,
+    semestral: 6,
+    anual: 12,
+  };
+  return addMonths(base, map[freq] || 1);
+};
+
 // ---------- store ----------
 interface State {
   clientes: Cliente[];
@@ -602,7 +620,10 @@ interface State {
   ) => Orcamento;
   updateOrcamento: (id: string, patch: Partial<Orcamento>) => void;
   removeOrcamento: (id: string) => void;
-  aprovarOrcamento: (id: string) => Pedido | null;
+  enviarOrcamento: (id: string) => void;
+  aprovarOrcamento: (id: string) => void;
+  recusarOrcamento: (id: string) => void;
+  gerarPedidoDeOrcamento: (id: string) => Pedido | null;
 
   // Contratos
   addContrato: (
@@ -631,9 +652,15 @@ interface State {
   addLancamento: (
     l: Omit<Lancamento, "id" | "criadoEm" | "status"> & { status?: Lancamento["status"] },
   ) => Lancamento;
-  marcarPago: (id: string) => void;
+  /** Para contas a pagar: registra o pagamento efetuado. */
+  pagarLancamento: (id: string) => void;
+  /** Para contas a receber: registra o recebimento (data e valor opcionais). */
+  registrarRecebimento: (id: string, valor?: number, data?: string) => void;
   estornar: (id: string) => void;
   removeLancamento: (id: string) => void;
+
+  // Pedidos
+  atualizarStatusPedido: (id: string, status: Pedido["status"]) => void;
 
   // Suporte
   addTicket: (
@@ -746,7 +773,25 @@ export const useAppStore = create<State>()(
         })),
       removeOrcamento: (id) =>
         set((s) => ({ orcamentos: s.orcamentos.filter((o) => o.id !== id) })),
-      aprovarOrcamento: (id) => {
+      enviarOrcamento: (id) =>
+        set((s) => ({
+          orcamentos: s.orcamentos.map((o) =>
+            o.id === id ? { ...o, status: "enviado" } : o,
+          ),
+        })),
+      aprovarOrcamento: (id) =>
+        set((s) => ({
+          orcamentos: s.orcamentos.map((o) =>
+            o.id === id ? { ...o, status: "aprovado" } : o,
+          ),
+        })),
+      recusarOrcamento: (id) =>
+        set((s) => ({
+          orcamentos: s.orcamentos.map((o) =>
+            o.id === id ? { ...o, status: "recusado" } : o,
+          ),
+        })),
+      gerarPedidoDeOrcamento: (id) => {
         const orc = get().orcamentos.find((o) => o.id === id);
         if (!orc) return null;
         const total = calcOrcamentoTotal(orc);
@@ -758,9 +803,10 @@ export const useAppStore = create<State>()(
           clienteId: orc.clienteId,
           total,
           criadoEm: now(),
-          status: "aberto",
+          status: "aprovado",
+          itens: orc.itens.map((i) => ({ ...i })),
         };
-        // gera lançamento financeiro
+        // gera contas a receber a partir do pedido
         const lanc: Lancamento = {
           id: uid(),
           tipo: "receber",
@@ -783,6 +829,11 @@ export const useAppStore = create<State>()(
         return pedido;
       },
 
+      atualizarStatusPedido: (id, status) =>
+        set((s) => ({
+          pedidos: s.pedidos.map((p) => (p.id === id ? { ...p, status } : p)),
+        })),
+
       // ---------- Contratos ----------
       addContrato: (c) => {
         const numero = `CTR-${String(get().contratos.length + 1).padStart(4, "0")}`;
@@ -802,13 +853,14 @@ export const useAppStore = create<State>()(
       faturarContrato: (id) => {
         const ct = get().contratos.find((c) => c.id === id);
         if (!ct) return null;
+        const venc = proximaCobranca(ct.frequencia ?? "mensal");
         const lanc: Lancamento = {
           id: uid(),
           tipo: "receber",
           descricao: `Mensalidade ${ct.numero}`,
           clienteId: ct.clienteId,
           valor: ct.valorMensal,
-          vencimento: addDays(new Date(), 10),
+          vencimento: venc,
           status: "aberto",
           origem: "contrato",
           contratoId: ct.id,
@@ -871,16 +923,35 @@ export const useAppStore = create<State>()(
         set((s) => ({ lancamentos: [novo, ...s.lancamentos] }));
         return novo;
       },
-      marcarPago: (id) =>
+      pagarLancamento: (id) =>
         set((s) => ({
           lancamentos: s.lancamentos.map((l) =>
-            l.id === id ? { ...l, status: "pago", pagoEm: now() } : l,
+            l.id === id && l.tipo === "pagar"
+              ? { ...l, status: "pago", pagoEm: now(), valorPago: l.valor }
+              : l,
           ),
+        })),
+      registrarRecebimento: (id, valor, data) =>
+        set((s) => ({
+          lancamentos: s.lancamentos.map((l) => {
+            if (l.id !== id || l.tipo !== "receber") return l;
+            const v = valor ?? l.valor;
+            const totalRecebido = (l.valorPago ?? 0) + v;
+            const quitado = totalRecebido >= l.valor;
+            return {
+              ...l,
+              status: quitado ? "pago" : "parcial",
+              valorPago: totalRecebido,
+              pagoEm: quitado ? (data ?? now()) : l.pagoEm,
+            };
+          }),
         })),
       estornar: (id) =>
         set((s) => ({
           lancamentos: s.lancamentos.map((l) =>
-            l.id === id ? { ...l, status: "aberto", pagoEm: undefined } : l,
+            l.id === id
+              ? { ...l, status: "aberto", pagoEm: undefined, valorPago: undefined }
+              : l,
           ),
         })),
       removeLancamento: (id) =>
@@ -926,7 +997,7 @@ export const useAppStore = create<State>()(
         return os;
       },
     }),
-    { name: "greenlink-adm-v2" },
+    { name: "greenlink-adm-v3" },
   ),
 );
 
