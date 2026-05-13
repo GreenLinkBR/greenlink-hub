@@ -107,12 +107,65 @@ export interface Pedido {
   clienteId: ID;
   total: number;
   criadoEm: string;
-  status: "aberto" | "concluido" | "cancelado";
+  status:
+    | "aberto"
+    | "aprovado"
+    | "faturado"
+    | "parcialmente_atendido"
+    | "atendido"
+    | "cancelado";
+  itens?: OrcamentoItem[];
 }
+
+export const PEDIDO_STATUS: { id: Pedido["status"]; label: string }[] = [
+  { id: "aberto", label: "Aberto" },
+  { id: "aprovado", label: "Aprovado" },
+  { id: "faturado", label: "Faturado" },
+  { id: "parcialmente_atendido", label: "Parcialmente atendido" },
+  { id: "atendido", label: "Atendido" },
+  { id: "cancelado", label: "Cancelado" },
+];
+
+export const ORCAMENTO_STATUS: { id: OrcamentoStatus; label: string }[] = [
+  { id: "rascunho", label: "Rascunho" },
+  { id: "enviado", label: "Enviado" },
+  { id: "aprovado", label: "Aprovado" },
+  { id: "recusado", label: "Recusado" },
+  { id: "convertido", label: "Convertido em pedido" },
+];
 
 // ---------- Contratos ----------
 export type ContratoStatus = "ativo" | "suspenso" | "encerrado";
 export type ContratoIndexador = "ipca" | "igpm" | "fixo";
+export type ContratoTipo =
+  | "venda_instalacao"
+  | "locacao"
+  | "assinatura"
+  | "suporte"
+  | "misto";
+export type ContratoFrequencia =
+  | "unica"
+  | "mensal"
+  | "trimestral"
+  | "semestral"
+  | "anual";
+
+export const CONTRATO_TIPO_LABEL: Record<ContratoTipo, string> = {
+  venda_instalacao: "Venda + instalação",
+  locacao: "Locação",
+  assinatura: "Assinatura",
+  suporte: "Suporte",
+  misto: "Misto",
+};
+
+export const CONTRATO_FREQUENCIA_LABEL: Record<ContratoFrequencia, string> = {
+  unica: "Pagamento único",
+  mensal: "Mensal",
+  trimestral: "Trimestral",
+  semestral: "Semestral",
+  anual: "Anual",
+};
+
 export interface Contrato {
   id: ID;
   numero: string;
@@ -122,6 +175,8 @@ export interface Contrato {
   fim: string;
   valorMensal: number;
   indexador: ContratoIndexador;
+  tipo: ContratoTipo;
+  frequencia: ContratoFrequencia;
   proximoReajuste?: string;
   status: ContratoStatus;
   descricao?: string;
@@ -173,6 +228,7 @@ export interface OS {
   observacao?: string;
   pedidoId?: ID;
   contratoId?: ID;
+  ticketId?: ID;
   criadoEm: string;
   concluidaEm?: string;
 }
@@ -191,7 +247,7 @@ export interface Movimentacao {
 
 // ---------- Financeiro ----------
 export type LancamentoTipo = "receber" | "pagar";
-export type LancamentoStatus = "aberto" | "pago" | "vencido" | "cancelado";
+export type LancamentoStatus = "aberto" | "parcial" | "pago" | "cancelado";
 export type LancamentoOrigem = "contrato" | "pedido" | "manual";
 export interface Lancamento {
   id: ID;
@@ -200,6 +256,7 @@ export interface Lancamento {
   clienteId?: ID;
   fornecedor?: string;
   valor: number;
+  valorPago?: number;
   vencimento: string;
   pagoEm?: string;
   status: LancamentoStatus;
@@ -208,6 +265,9 @@ export interface Lancamento {
   pedidoId?: ID;
   criadoEm: string;
 }
+
+/** Status efetivo derivado para exibição (inclui "vencido" calculado por data). */
+export type LancamentoStatusVisual = LancamentoStatus | "vencido";
 
 // ---------- Suporte ----------
 export type TicketStatus = "novo" | "andamento" | "aguardando" | "resolvido";

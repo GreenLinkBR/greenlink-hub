@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useAppStore, formatBRL, formatDate, calcOrcamentoTotal } from "@/lib/mock/store";
-import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Send, Truck } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/orcamentos/$id")({
@@ -28,7 +28,14 @@ export const Route = createFileRoute("/orcamentos/$id")({
 function OrcDetalhe() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { orcamentos, clientes, updateOrcamento, aprovarOrcamento } = useAppStore();
+  const {
+    orcamentos,
+    clientes,
+    enviarOrcamento,
+    aprovarOrcamento,
+    recusarOrcamento,
+    gerarPedidoDeOrcamento,
+  } = useAppStore();
   const o = orcamentos.find((x) => x.id === id);
   if (!o) throw notFound();
   const cli = clientes.find((c) => c.id === o.clienteId);
@@ -51,28 +58,53 @@ function OrcDetalhe() {
             <Badge variant="outline" className="text-xs">
               {o.status}
             </Badge>
-            {o.status !== "convertido" && o.status !== "aprovado" && (
+            {o.status === "rascunho" && (
               <Button
                 variant="outline"
                 onClick={() => {
-                  updateOrcamento(o.id, { status: "recusado" });
-                  toast.message("Marcado como recusado");
+                  enviarOrcamento(o.id);
+                  toast.success("Orçamento enviado ao cliente.");
                 }}
               >
-                <XCircle className="h-4 w-4 mr-1" /> Recusar
+                <Send className="h-4 w-4 mr-1" /> Enviar
               </Button>
             )}
-            {o.status !== "convertido" && (
+            {(o.status === "rascunho" || o.status === "enviado") && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    recusarOrcamento(o.id);
+                    toast.message("Orçamento marcado como recusado.");
+                  }}
+                >
+                  <XCircle className="h-4 w-4 mr-1" /> Recusar
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!o.itens.length) {
+                      toast.error("Adicione pelo menos um item antes de aprovar.");
+                      return;
+                    }
+                    aprovarOrcamento(o.id);
+                    toast.success("Orçamento aprovado.");
+                  }}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar
+                </Button>
+              </>
+            )}
+            {o.status === "aprovado" && (
               <Button
                 onClick={() => {
-                  const p = aprovarOrcamento(o.id);
+                  const p = gerarPedidoDeOrcamento(o.id);
                   if (p) {
-                    toast.success(`Pedido ${p.numero} criado`);
+                    toast.success(`Pedido ${p.numero} criado.`);
                     navigate({ to: "/pedidos/$id", params: { id: p.id } });
                   }
                 }}
               >
-                <CheckCircle2 className="h-4 w-4 mr-1" /> Aprovar e gerar pedido
+                <Truck className="h-4 w-4 mr-1" /> Gerar pedido
               </Button>
             )}
           </div>

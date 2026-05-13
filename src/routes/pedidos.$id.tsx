@@ -4,6 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useAppStore, formatBRL, formatDate } from "@/lib/mock/store";
+import { PEDIDO_STATUS } from "@/lib/mock/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft, Wrench } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -21,11 +29,12 @@ export const Route = createFileRoute("/pedidos/$id")({
 function PedidoDetalhe() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { pedidos, clientes, orcamentos, addOS } = useAppStore();
+  const { pedidos, clientes, orcamentos, addOS, atualizarStatusPedido } = useAppStore();
   const p = pedidos.find((x) => x.id === id);
   if (!p) throw notFound();
   const orc = orcamentos.find((o) => o.id === p.orcamentoId);
   const cli = clientes.find((c) => c.id === p.clienteId);
+  const itens = p.itens ?? orc?.itens ?? [];
   return (
     <PageContainer>
       <Link
@@ -39,7 +48,24 @@ function PedidoDetalhe() {
         description={`${cli?.nome ?? "—"} · ${formatDate(p.criadoEm)}`}
         actions={
           <div className="flex gap-2 flex-wrap items-center">
-            <Badge variant="outline">{p.status}</Badge>
+            <Select
+              value={p.status}
+              onValueChange={(v) => {
+                atualizarStatusPedido(p.id, v as typeof p.status);
+                toast.success("Status do pedido atualizado.");
+              }}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PEDIDO_STATUS.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               variant="outline"
               onClick={() => {
@@ -70,7 +96,7 @@ function PedidoDetalhe() {
             <p>{cli?.nome ?? "—"}</p>
           </div>
           <div>
-            <p className="text-xs uppercase text-muted-foreground">Origem</p>
+            <p className="text-xs uppercase text-muted-foreground">Origem (orçamento)</p>
             {orc ? (
               <Link
                 to="/orcamentos/$id"
@@ -89,9 +115,29 @@ function PedidoDetalhe() {
           </div>
           <div>
             <p className="text-xs uppercase text-muted-foreground">Itens</p>
-            <p>{orc?.itens.length ?? 0}</p>
+            <p>{itens.length}</p>
           </div>
         </div>
+        {itens.length > 0 && (
+          <div className="mt-5 border-t pt-4">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-medium">
+              Itens do pedido (snapshot)
+            </p>
+            <ul className="divide-y text-sm">
+              {itens.map((it, i) => (
+                <li key={i} className="flex justify-between py-2">
+                  <span>
+                    <span className="font-medium">{it.nome}</span>{" "}
+                    <span className="text-muted-foreground text-xs">({it.codigo})</span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    {it.quantidade} × {formatBRL(it.precoUnit)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Card>
     </PageContainer>
   );

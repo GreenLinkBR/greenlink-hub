@@ -30,7 +30,15 @@ import {
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useAppStore, formatBRL, formatDate } from "@/lib/mock/store";
-import type { ContratoIndexador } from "@/lib/mock/types";
+import {
+  CONTRATO_FREQUENCIA_LABEL,
+  CONTRATO_TIPO_LABEL,
+} from "@/lib/mock/types";
+import type {
+  ContratoFrequencia,
+  ContratoIndexador,
+  ContratoTipo,
+} from "@/lib/mock/types";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,6 +59,8 @@ function ContratosPage() {
     inicio: new Date().toISOString().slice(0, 10),
     fim: "",
     indexador: "fixo" as ContratoIndexador,
+    tipo: "assinatura" as ContratoTipo,
+    frequencia: "mensal" as ContratoFrequencia,
     descricao: "",
   });
 
@@ -65,6 +75,8 @@ function ContratosPage() {
       inicio: new Date(form.inicio).toISOString(),
       fim: new Date(form.fim).toISOString(),
       indexador: form.indexador,
+      tipo: form.tipo,
+      frequencia: form.frequencia,
       descricao: form.descricao,
     });
     toast.success("Contrato criado.");
@@ -75,6 +87,8 @@ function ContratosPage() {
       inicio: new Date().toISOString().slice(0, 10),
       fim: "",
       indexador: "fixo",
+      tipo: "assinatura",
+      frequencia: "mensal",
       descricao: "",
     });
   };
@@ -159,6 +173,48 @@ function ContratosPage() {
                     </Select>
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Tipo</Label>
+                    <Select
+                      value={form.tipo}
+                      onValueChange={(v) => setForm({ ...form, tipo: v as ContratoTipo })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(CONTRATO_TIPO_LABEL) as ContratoTipo[]).map((k) => (
+                          <SelectItem key={k} value={k}>
+                            {CONTRATO_TIPO_LABEL[k]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Frequência</Label>
+                    <Select
+                      value={form.frequencia}
+                      onValueChange={(v) =>
+                        setForm({ ...form, frequencia: v as ContratoFrequencia })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(CONTRATO_FREQUENCIA_LABEL) as ContratoFrequencia[]).map(
+                          (k) => (
+                            <SelectItem key={k} value={k}>
+                              {CONTRATO_FREQUENCIA_LABEL[k]}
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div>
                   <Label>Descrição</Label>
                   <Input
@@ -193,7 +249,8 @@ function ContratosPage() {
                   <Badge variant={statusVariant(c.status)}>{c.status}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {cli?.nome} · {c.indexador.toUpperCase()}
+                  {cli?.nome} · {CONTRATO_TIPO_LABEL[c.tipo]} ·{" "}
+                  {CONTRATO_FREQUENCIA_LABEL[c.frequencia]}
                 </p>
                 <p className="text-sm font-semibold mt-1">{formatBRL(c.valorMensal)}/mês</p>
                 <p className="text-xs text-muted-foreground">Até {formatDate(c.fim)}</p>
@@ -207,9 +264,11 @@ function ContratosPage() {
               <TableRow>
                 <TableHead>Número</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Frequência</TableHead>
                 <TableHead>Vigência</TableHead>
                 <TableHead>Mensal</TableHead>
-                <TableHead>Indexador</TableHead>
+                <TableHead>Próx. reajuste</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -229,10 +288,18 @@ function ContratosPage() {
                     {clientes.find((x) => x.id === c.clienteId)?.nome ?? "—"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
+                    {CONTRATO_TIPO_LABEL[c.tipo]}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {CONTRATO_FREQUENCIA_LABEL[c.frequencia]}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {formatDate(c.inicio)} → {formatDate(c.fim)}
                   </TableCell>
                   <TableCell className="font-semibold">{formatBRL(c.valorMensal)}</TableCell>
-                  <TableCell className="uppercase text-xs">{c.indexador}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    {c.proximoReajuste ? formatDate(c.proximoReajuste) : "—"}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={statusVariant(c.status)}>{c.status}</Badge>
                   </TableCell>
@@ -240,7 +307,7 @@ function ContratosPage() {
               ))}
               {!contratos.length && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     Nenhum contrato.
                   </TableCell>
                 </TableRow>

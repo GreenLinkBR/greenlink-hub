@@ -4,6 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useAppStore, formatBRL, formatDate } from "@/lib/mock/store";
+import {
+  CONTRATO_FREQUENCIA_LABEL,
+  CONTRATO_TIPO_LABEL,
+} from "@/lib/mock/types";
 import { ArrowLeft, FileSignature, PauseCircle, PlayCircle, XCircle, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
@@ -108,6 +112,8 @@ function Detalhe() {
           <div className="grid sm:grid-cols-2 gap-3 text-sm">
             <Info label="Cliente" value={cli?.nome ?? "—"} />
             <Info label="Status" value={<Badge>{ct.status}</Badge>} />
+            <Info label="Tipo" value={CONTRATO_TIPO_LABEL[ct.tipo]} />
+            <Info label="Frequência" value={CONTRATO_FREQUENCIA_LABEL[ct.frequencia]} />
             <Info label="Início" value={formatDate(ct.inicio)} />
             <Info label="Fim" value={formatDate(ct.fim)} />
             <Info
@@ -115,6 +121,10 @@ function Detalhe() {
               value={<span className="font-semibold">{formatBRL(ct.valorMensal)}</span>}
             />
             <Info label="Indexador" value={ct.indexador.toUpperCase()} />
+            <Info
+              label="Próximo reajuste"
+              value={ct.proximoReajuste ? formatDate(ct.proximoReajuste) : "—"}
+            />
           </div>
         </Card>
         <Card className="p-5">
