@@ -1,7 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
-  SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { navGroups } from "./nav-config";
@@ -39,7 +47,11 @@ export function AppSidebar() {
                         <SidebarMenuButton disabled className="opacity-60 cursor-not-allowed">
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
-                          {!collapsed && <Badge variant="outline" className="ml-auto text-[10px] px-1 py-0">em breve</Badge>}
+                          {!collapsed && (
+                            <Badge variant="outline" className="ml-auto text-[10px] px-1 py-0">
+                              em breve
+                            </Badge>
+                          )}
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );

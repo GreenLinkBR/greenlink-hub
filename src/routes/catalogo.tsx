@@ -6,13 +6,27 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useAppStore, formatBRL } from "@/lib/mock/store";
@@ -37,9 +51,16 @@ function CatalogoPage() {
         description="Produtos, serviços e kits comercializáveis."
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />Novo item</Button></DialogTrigger>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-1" />
+                Novo item
+              </Button>
+            </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Novo item</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Novo item</DialogTitle>
+              </DialogHeader>
               <form
                 className="space-y-3"
                 onSubmit={(e) => {
@@ -58,11 +79,16 @@ function CatalogoPage() {
                 }}
               >
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5"><Label>Código</Label><Input name="codigo" required /></div>
+                  <div className="space-y-1.5">
+                    <Label>Código</Label>
+                    <Input name="codigo" required />
+                  </div>
                   <div className="space-y-1.5">
                     <Label>Tipo</Label>
                     <Select value={tipo} onValueChange={(v) => setTipo(v as ItemTipo)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="produto">Produto</SelectItem>
                         <SelectItem value="servico">Serviço</SelectItem>
@@ -71,12 +97,23 @@ function CatalogoPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-1.5"><Label>Nome</Label><Input name="nome" required /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5"><Label>Unidade</Label><Input name="unidade" defaultValue="un" /></div>
-                  <div className="space-y-1.5"><Label>Preço</Label><Input name="preco" type="number" step="0.01" required /></div>
+                <div className="space-y-1.5">
+                  <Label>Nome</Label>
+                  <Input name="nome" required />
                 </div>
-                <DialogFooter><Button type="submit">Adicionar</Button></DialogFooter>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Unidade</Label>
+                    <Input name="unidade" defaultValue="un" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Preço</Label>
+                    <Input name="preco" type="number" step="0.01" required />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit">Adicionar</Button>
+                </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
@@ -88,9 +125,13 @@ function CatalogoPage() {
             <div key={i.id} className="rounded-lg border p-3">
               <div className="flex items-center justify-between">
                 <p className="font-medium">{i.nome}</p>
-                <Badge variant="outline" className="text-[10px]">{i.tipo}</Badge>
+                <Badge variant="outline" className="text-[10px]">
+                  {i.tipo}
+                </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">{i.codigo} · {i.unidade}</p>
+              <p className="text-xs text-muted-foreground">
+                {i.codigo} · {i.unidade}
+              </p>
               <p className="font-semibold mt-1">{formatBRL(i.preco)}</p>
             </div>
           ))}
@@ -112,10 +153,22 @@ function CatalogoPage() {
                 <TableRow key={i.id}>
                   <TableCell className="font-mono text-xs">{i.codigo}</TableCell>
                   <TableCell className="font-medium">{i.nome}</TableCell>
-                  <TableCell><Badge variant="outline" className="text-[10px]">{i.tipo}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-[10px]">
+                      {i.tipo}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{i.unidade}</TableCell>
                   <TableCell className="font-semibold">{formatBRL(i.preco)}</TableCell>
-                  <TableCell>{i.ativo ? <Badge className="bg-success/15 text-success" variant="secondary">ativo</Badge> : <Badge variant="outline">inativo</Badge>}</TableCell>
+                  <TableCell>
+                    {i.ativo ? (
+                      <Badge className="bg-success/15 text-success" variant="secondary">
+                        ativo
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">inativo</Badge>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

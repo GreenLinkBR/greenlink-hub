@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable,
-  useSensor, useSensors,
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
 } from "@dnd-kit/core";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,10 +15,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useAppStore, formatBRL } from "@/lib/mock/store";
@@ -51,9 +65,16 @@ function Pipeline() {
         description="Arraste os cards entre as colunas."
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />Nova oportunidade</Button></DialogTrigger>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-1" />
+                Nova oportunidade
+              </Button>
+            </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Nova oportunidade</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Nova oportunidade</DialogTitle>
+              </DialogHeader>
               <form
                 className="space-y-3"
                 onSubmit={(e) => {
@@ -69,29 +90,52 @@ function Pipeline() {
                   setOpen(false);
                 }}
               >
-                <div className="space-y-1.5"><Label>Título</Label><Input name="titulo" required /></div>
+                <div className="space-y-1.5">
+                  <Label>Título</Label>
+                  <Input name="titulo" required />
+                </div>
                 <div className="space-y-1.5">
                   <Label>Cliente</Label>
                   <Select value={clienteId} onValueChange={setClienteId}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {clientes.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                      {clientes.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nome}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5"><Label>Valor (R$)</Label><Input name="valor" type="number" step="0.01" defaultValue={0} /></div>
+                  <div className="space-y-1.5">
+                    <Label>Valor (R$)</Label>
+                    <Input name="valor" type="number" step="0.01" defaultValue={0} />
+                  </div>
                   <div className="space-y-1.5">
                     <Label>Estágio</Label>
-                    <Select value={estagio} onValueChange={(v) => setEstagio(v as EstagioOportunidade)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Select
+                      value={estagio}
+                      onValueChange={(v) => setEstagio(v as EstagioOportunidade)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
-                        {ESTAGIOS.map((e) => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
+                        {ESTAGIOS.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                <DialogFooter><Button type="submit">Criar</Button></DialogFooter>
+                <DialogFooter>
+                  <Button type="submit">Criar</Button>
+                </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
@@ -107,7 +151,8 @@ function Pipeline() {
               <Coluna key={e.id} id={e.id} label={e.label} count={cards.length} total={total}>
                 {cards.map((o) => (
                   <CardOportunidade
-                    key={o.id} opp={o}
+                    key={o.id}
+                    opp={o}
                     cliente={clientes.find((c) => c.id === o.clienteId)?.nome ?? "—"}
                   />
                 ))}
@@ -120,7 +165,19 @@ function Pipeline() {
   );
 }
 
-function Coluna({ id, label, count, total, children }: { id: string; label: string; count: number; total: number; children: React.ReactNode }) {
+function Coluna({
+  id,
+  label,
+  count,
+  total,
+  children,
+}: {
+  id: string;
+  label: string;
+  count: number;
+  total: number;
+  children: React.ReactNode;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
     <div
@@ -130,7 +187,9 @@ function Coluna({ id, label, count, total, children }: { id: string; label: stri
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="font-semibold text-sm">{label}</p>
-          <p className="text-xs text-muted-foreground">{count} · {formatBRL(total)}</p>
+          <p className="text-xs text-muted-foreground">
+            {count} · {formatBRL(total)}
+          </p>
         </div>
       </div>
       <div className="space-y-2 min-h-[100px]">{children}</div>
@@ -140,12 +199,16 @@ function Coluna({ id, label, count, total, children }: { id: string; label: stri
 
 function CardOportunidade({ opp, cliente }: { opp: Oportunidade; cliente: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: opp.id });
-  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
   return (
     <Card
-      ref={setNodeRef} style={style}
+      ref={setNodeRef}
+      style={style}
       className={`p-3 cursor-grab active:cursor-grabbing select-none ${isDragging ? "opacity-50 shadow-lg" : ""}`}
-      {...attributes} {...listeners}
+      {...attributes}
+      {...listeners}
     >
       <div className="flex items-start gap-2">
         <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -154,7 +217,11 @@ function CardOportunidade({ opp, cliente }: { opp: Oportunidade; cliente: string
           <p className="text-xs text-muted-foreground truncate">{cliente}</p>
           <div className="flex items-center justify-between mt-2">
             <span className="text-sm font-semibold">{formatBRL(opp.valor)}</span>
-            {opp.responsavel && <Badge variant="outline" className="text-[10px]">{opp.responsavel}</Badge>}
+            {opp.responsavel && (
+              <Badge variant="outline" className="text-[10px]">
+                {opp.responsavel}
+              </Badge>
+            )}
           </div>
         </div>
       </div>

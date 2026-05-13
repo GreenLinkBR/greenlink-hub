@@ -32,6 +32,7 @@ import { Route as OrcamentosNovoRouteImport } from './routes/orcamentos.novo'
 import { Route as OrcamentosIdRouteImport } from './routes/orcamentos.$id'
 import { Route as ContratosIdRouteImport } from './routes/contratos.$id'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
+import { Route as AtivosIdRouteImport } from './routes/ativos.$id'
 
 const SuporteRoute = SuporteRouteImport.update({
   id: '/suporte',
@@ -148,10 +149,15 @@ const ClientesIdRoute = ClientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ClientesRoute,
 } as any)
+const AtivosIdRoute = AtivosIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AtivosRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/ativos': typeof AtivosRoute
+  '/ativos': typeof AtivosRouteWithChildren
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/suporte': typeof SuporteRouteWithChildren
+  '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
@@ -176,7 +183,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/ativos': typeof AtivosRoute
+  '/ativos': typeof AtivosRouteWithChildren
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
@@ -191,6 +198,7 @@ export interface FileRoutesByTo {
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/suporte': typeof SuporteRouteWithChildren
+  '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
@@ -202,7 +210,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/ativos': typeof AtivosRoute
+  '/ativos': typeof AtivosRouteWithChildren
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
@@ -217,6 +225,7 @@ export interface FileRoutesById {
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
   '/suporte': typeof SuporteRouteWithChildren
+  '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
@@ -244,6 +253,7 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/suporte'
+    | '/ativos/$id'
     | '/clientes/$id'
     | '/contratos/$id'
     | '/orcamentos/$id'
@@ -269,6 +279,7 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/suporte'
+    | '/ativos/$id'
     | '/clientes/$id'
     | '/contratos/$id'
     | '/orcamentos/$id'
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/pedidos'
     | '/pipeline'
     | '/suporte'
+    | '/ativos/$id'
     | '/clientes/$id'
     | '/contratos/$id'
     | '/orcamentos/$id'
@@ -305,7 +317,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AtivosRoute: typeof AtivosRoute
+  AtivosRoute: typeof AtivosRouteWithChildren
   CatalogoRoute: typeof CatalogoRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ConfiguracoesRoute: typeof ConfiguracoesRoute
@@ -485,8 +497,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientesIdRouteImport
       parentRoute: typeof ClientesRoute
     }
+    '/ativos/$id': {
+      id: '/ativos/$id'
+      path: '/$id'
+      fullPath: '/ativos/$id'
+      preLoaderRoute: typeof AtivosIdRouteImport
+      parentRoute: typeof AtivosRoute
+    }
   }
 }
+
+interface AtivosRouteChildren {
+  AtivosIdRoute: typeof AtivosIdRoute
+}
+
+const AtivosRouteChildren: AtivosRouteChildren = {
+  AtivosIdRoute: AtivosIdRoute,
+}
+
+const AtivosRouteWithChildren =
+  AtivosRoute._addFileChildren(AtivosRouteChildren)
 
 interface ClientesRouteChildren {
   ClientesIdRoute: typeof ClientesIdRoute
@@ -560,7 +590,7 @@ const SuporteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AtivosRoute: AtivosRoute,
+  AtivosRoute: AtivosRouteWithChildren,
   CatalogoRoute: CatalogoRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ConfiguracoesRoute: ConfiguracoesRoute,
@@ -579,3 +609,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

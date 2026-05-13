@@ -12,7 +12,12 @@ export const Route = createFileRoute("/clientes/$id")({
   component: ClienteDetalhe,
   notFoundComponent: () => (
     <PageContainer>
-      <p className="text-muted-foreground">Cliente não encontrado. <Link to="/clientes" className="text-primary">Voltar</Link></p>
+      <p className="text-muted-foreground">
+        Cliente não encontrado.{" "}
+        <Link to="/clientes" className="text-primary">
+          Voltar
+        </Link>
+      </p>
     </PageContainer>
   ),
 });
@@ -28,13 +33,20 @@ function ClienteDetalhe() {
 
   return (
     <PageContainer>
-      <Link to="/clientes" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
+      <Link
+        to="/clientes"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3"
+      >
         <ArrowLeft className="h-4 w-4" /> Clientes
       </Link>
       <PageHeader
         title={cliente.nome}
         description={cliente.documento ?? cliente.email ?? "—"}
-        actions={<Badge variant="outline" className="uppercase text-[10px]">{cliente.tipo}</Badge>}
+        actions={
+          <Badge variant="outline" className="uppercase text-[10px]">
+            {cliente.tipo}
+          </Badge>
+        }
       />
 
       <Tabs defaultValue="dados">
@@ -66,7 +78,9 @@ function ClienteDetalhe() {
                   <li key={c.id} className="py-3 flex items-start justify-between">
                     <div>
                       <p className="font-medium">{c.nome}</p>
-                      <p className="text-xs text-muted-foreground">{c.cargo ?? "—"} · {c.email ?? "—"} · {c.telefone ?? "—"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.cargo ?? "—"} · {c.email ?? "—"} · {c.telefone ?? "—"}
+                      </p>
                     </div>
                   </li>
                 ))}
@@ -93,10 +107,17 @@ function ClienteDetalhe() {
         <TabsContent value="orcamentos">
           <Card className="p-5 space-y-2">
             {orcs.map((o) => (
-              <Link key={o.id} to="/orcamentos/$id" params={{ id: o.id }} className="flex items-center justify-between rounded-md border p-3 hover:bg-muted">
+              <Link
+                key={o.id}
+                to="/orcamentos/$id"
+                params={{ id: o.id }}
+                className="flex items-center justify-between rounded-md border p-3 hover:bg-muted"
+              >
                 <div>
                   <p className="font-medium">{o.numero}</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(o.criadoEm)} · {o.status}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(o.criadoEm)} · {o.status}
+                  </p>
                 </div>
                 <p className="font-semibold">{formatBRL(calcOrcamentoTotal(o))}</p>
               </Link>

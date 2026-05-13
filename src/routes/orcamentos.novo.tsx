@@ -5,10 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useAppStore, formatBRL } from "@/lib/mock/store";
@@ -36,7 +45,17 @@ function NovoOrcamento() {
   const adicionar = () => {
     const it = catalogo.find((i) => i.id === novoItemId);
     if (!it) return;
-    setItens((arr) => [...arr, { itemId: it.id, codigo: it.codigo, nome: it.nome, quantidade: 1, precoUnit: it.preco, desconto: 0 }]);
+    setItens((arr) => [
+      ...arr,
+      {
+        itemId: it.id,
+        codigo: it.codigo,
+        nome: it.nome,
+        quantidade: 1,
+        precoUnit: it.preco,
+        desconto: 0,
+      },
+    ]);
   };
 
   const salvar = (status: "rascunho" | "enviado") => {
@@ -51,7 +70,10 @@ function NovoOrcamento() {
 
   return (
     <PageContainer>
-      <Link to="/orcamentos" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
+      <Link
+        to="/orcamentos"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3"
+      >
         <ArrowLeft className="h-4 w-4" /> Orçamentos
       </Link>
       <PageHeader title="Novo orçamento" description="Monte o orçamento a partir do catálogo." />
@@ -61,9 +83,15 @@ function NovoOrcamento() {
           <div className="space-y-1.5">
             <Label>Cliente</Label>
             <Select value={clienteId} onValueChange={setClienteId}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
               <SelectContent>
-                {clientes.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                {clientes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nome}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -73,7 +101,9 @@ function NovoOrcamento() {
               <div className="flex-1 space-y-1.5">
                 <Label className="text-xs">Adicionar do catálogo</Label>
                 <Select value={novoItemId} onValueChange={setNovoItemId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {catalogo.map((i) => (
                       <SelectItem key={i.id} value={i.id}>
@@ -83,7 +113,10 @@ function NovoOrcamento() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="button" onClick={adicionar}><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
+              <Button type="button" onClick={adicionar}>
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar
+              </Button>
             </div>
             <div className="overflow-x-auto">
               <Table>
@@ -105,26 +138,73 @@ function NovoOrcamento() {
                         <p className="text-xs text-muted-foreground">{it.codigo}</p>
                       </TableCell>
                       <TableCell>
-                        <Input type="number" min={0} value={it.quantidade}
-                          onChange={(e) => setItens((arr) => arr.map((x, i) => i === idx ? { ...x, quantidade: Number(e.target.value) } : x))} />
+                        <Input
+                          type="number"
+                          min={0}
+                          value={it.quantidade}
+                          onChange={(e) =>
+                            setItens((arr) =>
+                              arr.map((x, i) =>
+                                i === idx ? { ...x, quantidade: Number(e.target.value) } : x,
+                              ),
+                            )
+                          }
+                        />
                       </TableCell>
                       <TableCell>
-                        <Input type="number" min={0} step="0.01" value={it.precoUnit}
-                          onChange={(e) => setItens((arr) => arr.map((x, i) => i === idx ? { ...x, precoUnit: Number(e.target.value) } : x))} />
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={it.precoUnit}
+                          onChange={(e) =>
+                            setItens((arr) =>
+                              arr.map((x, i) =>
+                                i === idx ? { ...x, precoUnit: Number(e.target.value) } : x,
+                              ),
+                            )
+                          }
+                        />
                       </TableCell>
                       <TableCell>
-                        <Input type="number" min={0} step="0.01" value={it.desconto}
-                          onChange={(e) => setItens((arr) => arr.map((x, i) => i === idx ? { ...x, desconto: Number(e.target.value) } : x))} />
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={it.desconto}
+                          onChange={(e) =>
+                            setItens((arr) =>
+                              arr.map((x, i) =>
+                                i === idx ? { ...x, desconto: Number(e.target.value) } : x,
+                              ),
+                            )
+                          }
+                        />
                       </TableCell>
-                      <TableCell className="text-right font-medium">{formatBRL(it.quantidade * it.precoUnit - it.desconto)}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatBRL(it.quantidade * it.precoUnit - it.desconto)}
+                      </TableCell>
                       <TableCell>
-                        <Button size="icon" variant="ghost" onClick={() => setItens((arr) => arr.filter((_, i) => i !== idx))}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setItens((arr) => arr.filter((_, i) => i !== idx))}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!itens.length && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6 text-sm">Nenhum item adicionado.</TableCell></TableRow>}
+                  {!itens.length && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="text-center text-muted-foreground py-6 text-sm"
+                      >
+                        Nenhum item adicionado.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -134,7 +214,8 @@ function NovoOrcamento() {
             <Label>Observação</Label>
             <textarea
               className="w-full min-h-[80px] rounded-md border bg-background p-2 text-sm"
-              value={observacao} onChange={(e) => setObservacao(e.target.value)}
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
             />
           </div>
         </Card>
@@ -142,16 +223,31 @@ function NovoOrcamento() {
         <Card className="p-4 space-y-3 h-fit lg:sticky lg:top-20">
           <h3 className="font-semibold">Resumo</h3>
           <div className="space-y-1 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatBRL(subtotal)}</span></div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span>{formatBRL(subtotal)}</span>
+            </div>
             <div className="flex justify-between items-center gap-2">
               <span className="text-muted-foreground">Desconto</span>
-              <Input type="number" min={0} step="0.01" value={desconto} onChange={(e) => setDesconto(Number(e.target.value))} className="w-28 h-8 text-right" />
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={desconto}
+                onChange={(e) => setDesconto(Number(e.target.value))}
+                className="w-28 h-8 text-right"
+              />
             </div>
-            <div className="flex justify-between border-t pt-2 mt-2 text-base font-bold"><span>Total</span><span>{formatBRL(total)}</span></div>
+            <div className="flex justify-between border-t pt-2 mt-2 text-base font-bold">
+              <span>Total</span>
+              <span>{formatBRL(total)}</span>
+            </div>
           </div>
           <div className="grid gap-2">
             <Button onClick={() => salvar("enviado")}>Salvar e enviar</Button>
-            <Button variant="outline" onClick={() => salvar("rascunho")}>Salvar como rascunho</Button>
+            <Button variant="outline" onClick={() => salvar("rascunho")}>
+              Salvar como rascunho
+            </Button>
           </div>
         </Card>
       </div>
