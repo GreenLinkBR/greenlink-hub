@@ -30,12 +30,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatBRL, formatDate } from "@/lib/mock/store";
-import type { Cliente, Lancamento, LancamentoTipo } from "@/lib/mock/types";
+import { useAppStore, formatBRL, formatDate, visualLancamentoStatus } from "@/lib/mock/store";
+import type { Cliente, Lancamento, LancamentoTipo, LancamentoStatusVisual } from "@/lib/mock/types";
 import {
   Plus,
   CheckCircle2,
   RotateCcw,
+  HandCoins,
   TrendingUp,
   TrendingDown,
   Wallet,
@@ -49,21 +50,42 @@ export const Route = createFileRoute("/financeiro")({
   component: Financeiro,
 });
 
-const statusVariant = (s: string) =>
-  s === "pago" ? "default" : s === "vencido" ? "destructive" : "outline";
+const statusVariant = (s: LancamentoStatusVisual) =>
+  s === "pago"
+    ? "default"
+    : s === "vencido"
+      ? "destructive"
+      : s === "parcial"
+        ? "secondary"
+        : "outline";
+
+const statusLabel: Record<LancamentoStatusVisual, string> = {
+  aberto: "Aberto",
+  parcial: "Parcial",
+  pago: "Pago",
+  vencido: "Vencido",
+  cancelado: "Cancelado",
+};
 
 function Financeiro() {
-  const { lancamentos, clientes, addLancamento, marcarPago, estornar } = useAppStore();
+  const {
+    lancamentos,
+    clientes,
+    addLancamento,
+    pagarLancamento,
+    registrarRecebimento,
+    estornar,
+  } = useAppStore();
 
-  // recalcula "vencido" sob demanda
-  const lancs = useMemo(() => {
-    const today = new Date();
-    return lancamentos.map((l) => {
-      if (l.status === "aberto" && new Date(l.vencimento) < today)
-        return { ...l, status: "vencido" as const };
-      return l;
-    });
-  }, [lancamentos]);
+  const lancs = lancamentos;
+  const visual = useMemo(
+    () =>
+      Object.fromEntries(lancs.map((l) => [l.id, visualLancamentoStatus(l)])) as Record<
+        string,
+        LancamentoStatusVisual
+      >,
+    [lancs],
+  );
 
   const receber = lancs.filter((l) => l.tipo === "receber");
   const pagar = lancs.filter((l) => l.tipo === "pagar");
@@ -76,13 +98,13 @@ function Financeiro() {
   };
   const totReceber30 = receber
     .filter((l) => l.status !== "pago" && in30(l.vencimento))
-    .reduce((a, l) => a + l.valor, 0);
+    .reduce((a, l) => a + (l.valor - (l.valorPago ?? 0)), 0);
   const totPagar30 = pagar
     .filter((l) => l.status !== "pago" && in30(l.vencimento))
     .reduce((a, l) => a + l.valor, 0);
   const inadimplencia = receber
-    .filter((l) => l.status === "vencido")
-    .reduce((a, l) => a + l.valor, 0);
+    .filter((l) => visual[l.id] === "vencido")
+    .reduce((a, l) => a + (l.valor - (l.valorPago ?? 0)), 0);
   const saldoPrev = totReceber30 - totPagar30;
 
   const [open, setOpen] = useState(false);
@@ -250,16 +272,28 @@ function Financeiro() {
           <LancamentosTable
             items={receber}
             clientes={clientes}
-            marcarPago={marcarPago}
+            visual={visual}
             estornar={estornar}
+            onAcao={(l) => {
+              registrarRecebimento(l.id);
+              toast.success("Recebimento registrado.");
+            }}
+            acaoLabel="Registrar recebimento"
+            AcaoIcone={HandCoins}
           />
         </TabsContent>
         <TabsContent value="pagar">
           <LancamentosTable
             items={pagar}
             clientes={clientes}
-            marcarPago={marcarPago}
+            visual={visual}
             estornar={estornar}
+            onAcao={(l) => {
+              pagarLancamento(l.id);
+              toast.success("Pagamento registrado.");
+            }}
+            acaoLabel="Pagar"
+            AcaoIcone={CheckCircle2}
             mostrarFornecedor
           />
         </TabsContent>
@@ -301,16 +335,22 @@ function Kpi({ label, value, icon: Icon, accent }: KpiProps) {
 type LancamentosTableProps = {
   items: Lancamento[];
   clientes: Cliente[];
-  marcarPago: (id: string) => void;
+  visual: Record<string, LancamentoStatusVisual>;
   estornar: (id: string) => void;
+  onAcao: (l: Lancamento) => void;
+  acaoLabel: string;
+  AcaoIcone: LucideIcon;
   mostrarFornecedor?: boolean;
 };
 
 function LancamentosTable({
   items,
   clientes,
-  marcarPago,
+  visual,
   estornar,
+  onAcao,
+  acaoLabel,
+  AcaoIcone,
   mostrarFornecedor,
 }: LancamentosTableProps) {
   return (
@@ -327,7 +367,9 @@ function LancamentosTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((l) => (
+          {items.map((l) => {
+            const st = visual[l.id] ?? l.status;
+            return (
             <TableRow key={l.id}>
               <TableCell className="font-medium">{l.descricao}</TableCell>
               <TableCell className="text-muted-foreground">
@@ -336,22 +378,22 @@ function LancamentosTable({
                   : (clientes.find((c) => c.id === l.clienteId)?.nome ?? "—")}
               </TableCell>
               <TableCell className="text-muted-foreground">{formatDate(l.vencimento)}</TableCell>
-              <TableCell className="font-semibold">{formatBRL(l.valor)}</TableCell>
+              <TableCell className="font-semibold">
+                {formatBRL(l.valor)}
+                {l.valorPago ? (
+                  <span className="block text-[10px] font-normal text-muted-foreground">
+                    Pago: {formatBRL(l.valorPago)}
+                  </span>
+                ) : null}
+              </TableCell>
               <TableCell>
-                <Badge variant={statusVariant(l.status)}>{l.status}</Badge>
+                <Badge variant={statusVariant(st)}>{statusLabel[st]}</Badge>
               </TableCell>
               <TableCell className="text-right">
                 {l.status !== "pago" ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      marcarPago(l.id);
-                      toast.success("Marcado como pago.");
-                    }}
-                  >
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Pagar
+                  <Button size="sm" variant="outline" onClick={() => onAcao(l)}>
+                    <AcaoIcone className="h-3 w-3 mr-1" />
+                    {acaoLabel}
                   </Button>
                 ) : (
                   <Button size="sm" variant="ghost" onClick={() => estornar(l.id)}>
@@ -361,7 +403,8 @@ function LancamentosTable({
                 )}
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
           {!items.length && (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
