@@ -76,6 +76,7 @@ export interface ItemCatalogo {
   preco: number;
   ativo: boolean;
   descricao?: string;
+  estoqueMinimo?: number;
 }
 
 export type OrcamentoStatus = "rascunho" | "enviado" | "aprovado" | "recusado" | "convertido";
