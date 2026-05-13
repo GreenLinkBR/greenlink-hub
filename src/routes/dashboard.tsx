@@ -100,7 +100,7 @@ function Dashboard() {
     (t) => t.status !== "resolvido" && (t.prioridade === "alta" || t.prioridade === "critica"),
   ).length;
   const estoqueCritico = catalogo.filter(
-    (i) => i.tipo !== "servico" && calcEstoque(i.id, movimentacoes) < 10,
+    (i) => i.tipo !== "servico" && calcEstoque(i.id, movimentacoes) < (i.estoqueMinimo ?? 10),
   );
 
   const funilCounts = ESTAGIOS.map((e) => ({
