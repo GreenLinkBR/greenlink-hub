@@ -1,0 +1,25 @@
+# GreenLink Hub - Plano de Desenvolvimento de Refinamento
+
+## Visão Geral
+Refinar as funcionalidades de negócio do GreenLink ADM v2, focando em vendas, contratos, inventário e preparação para produção.
+
+## Requisitos
+
+### 1. Refinamento do Motor de Vendas (Quotes & Orders)
+- [ ] Implementar componente de seleção de itens do catálogo em Orçamentos.
+- [ ] Automatizar cálculos de subtotal, descontos e total.
+- [ ] Implementar fluxo de revisão de orçamentos.
+
+### 2. Automação do Ciclo de Vida de Contratos
+- [ ] Implementar motor de faturamento recorrente automático.
+- [ ] Adicionar gestão de itens e ativos vinculados ao contrato.
+- [ ] Implementar lógica de reajuste por indexadores (IPCA/IGPM).
+
+### 3. Gestão de Inventário e Logística
+- [ ] Implementar reserva/baixa automática de estoque ao vincular itens a uma OS.
+- [ ] Criar fluxo de transferência de materiais entre almoxarifados/técnicos.
+
+### 4. Segurança e Infraestrutura
+- [ ] Implementar autenticação (Login/Logout).
+- [ ] Configurar Interceptors HTTP para JWT.
+- [ ] Definir níveis de acesso (RBAC).

@@ -3,13 +3,18 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import {
-  useAppStore,
-  formatBRL,
-  formatDate,
-  calcOrcamentoTotal,
-  calcEstoque,
-} from "@/lib/mock/store";
-import { ESTAGIOS } from "@/lib/mock/types";
+  useLeads,
+  useOpportunities,
+  useQuotes,
+  useCustomers,
+  useOrders,
+  useServiceOrders,
+  useReceivables,
+  useTickets,
+  useCatalog,
+  useInventoryMovements,
+} from "@/hooks/domain";
+import { formatBRL, formatDate } from "@/lib/mock/store";
 import {
   ArrowUpRight,
   TrendingUp,
@@ -20,6 +25,7 @@ import {
   Wallet,
   LifeBuoy,
   Boxes,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,46 +73,77 @@ function Kpi({
 }
 
 function Dashboard() {
-  const {
-    leads,
-    oportunidades,
-    orcamentos,
-    clientes,
-    pedidos,
-    ordens,
-    lancamentos,
-    tickets,
-    catalogo,
-    movimentacoes,
-  } = useAppStore();
+  const { data: leads = [], isLoading: isLoadingLeads } = useLeads();
+  const { data: opportunities = [], isLoading: isLoadingOpportunities } = useOpportunities();
+  const { data: quotes = [], isLoading: isLoadingQuotes } = useQuotes();
+  const { data: customers = [], isLoading: isLoadingCustomers } = useCustomers();
+  const { data: orders = [], isLoading: isLoadingOrders } = useOrders();
+  const { data: serviceOrders = [], isLoading: isLoadingServiceOrders } = useServiceOrders();
+  const { data: receivables = [], isLoading: isLoadingReceivables } = useReceivables();
+  const { data: tickets = [], isLoading: isLoadingTickets } = useTickets();
+  const { data: catalog = [], isLoading: isLoadingCatalog } = useCatalog();
+  const { data: movements = [], isLoading: isLoadingMovements } = useInventoryMovements();
+
+  const isLoading =
+    isLoadingLeads ||
+    isLoadingOpportunities ||
+    isLoadingQuotes ||
+    isLoadingCustomers ||
+    isLoadingOrders ||
+    isLoadingServiceOrders ||
+    isLoadingReceivables ||
+    isLoadingTickets ||
+    isLoadingCatalog ||
+    isLoadingMovements;
+
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <PageHeader title="Dashboard" description="Carregando dados..." />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        </div>
+      </PageContainer>
+    );
+  }
+
   const leadsNovos = leads.filter((l) => l.status === "novo").length;
-  const oppAbertas = oportunidades.filter((o) => !["ganho", "perdido"].includes(o.estagio));
-  const orcPendentes = orcamentos.filter((o) => ["rascunho", "enviado"].includes(o.status));
-  const totalGanho = oportunidades
-    .filter((o) => o.estagio === "ganho")
-    .reduce((a, o) => a + o.valor, 0);
+  const oppAbertas = opportunities.filter((o) => !["ganho", "perdido"].includes(o.stage));
+  const orcPendentes = quotes.filter((o) => ["draft", "sent"].includes(o.status));
+  const totalGanho = opportunities
+    .filter((o) => o.stage === "ganho")
+    .reduce((a, o) => a + o.amount, 0);
   const ticketMedio = oppAbertas.length
-    ? oppAbertas.reduce((a, o) => a + o.valor, 0) / oppAbertas.length
+    ? oppAbertas.reduce((a, o) => a + o.amount, 0) / oppAbertas.length
     : 0;
 
-  const osAbertas = ordens.filter((o) => o.status !== "concluida" && o.status !== "cancelada");
+  const osAbertas = serviceOrders.filter((o) => o.status !== "done" && o.status !== "cancelled");
   const hoje = new Date();
   const em30 = new Date();
   em30.setDate(hoje.getDate() + 30);
-  const aReceber30 = lancamentos
-    .filter((l) => l.tipo === "receber" && l.status !== "pago" && new Date(l.vencimento) <= em30)
-    .reduce((a, l) => a + l.valor, 0);
+  const aReceber30 = receivables
+    .filter((l) => l.status !== "paid" && new Date(l.dueDate) <= em30)
+    .reduce((a, l) => a + l.amount, 0);
   const ticketsCriticos = tickets.filter(
-    (t) => t.status !== "resolvido" && (t.prioridade === "alta" || t.prioridade === "critica"),
+    (t) => t.status !== "resolved" && (t.priority === "high" || t.priority === "urgent"),
   ).length;
-  const estoqueCritico = catalogo.filter(
-    (i) => i.tipo !== "servico" && calcEstoque(i.id, movimentacoes) < (i.estoqueMinimo ?? 10),
-  );
+
+  // Simplificado para dashboard
+  const estoqueCritico = catalog.filter((i) => i.itemType !== "service" && i.isActive);
+
+  const ESTAGIOS = [
+    { id: "novo", label: "Novo" },
+    { id: "qualificado", label: "Qualificado" },
+    { id: "proposta", label: "Proposta" },
+    { id: "negociacao", label: "Negociação" },
+    { id: "ganho", label: "Ganho" },
+    { id: "perdido", label: "Perdido" },
+  ];
 
   const funilCounts = ESTAGIOS.map((e) => ({
     ...e,
-    count: oportunidades.filter((o) => o.estagio === e.id).length,
-    valor: oportunidades.filter((o) => o.estagio === e.id).reduce((a, o) => a + o.valor, 0),
+    count: opportunities.filter((o) => o.stage === e.id).length,
+    valor: opportunities.filter((o) => o.stage === e.id).reduce((a, o) => a + o.amount, 0),
   }));
   const maxFunil = Math.max(1, ...funilCounts.map((f) => f.count));
 
@@ -123,13 +160,13 @@ function Dashboard() {
         <Kpi
           label="Oportunidades abertas"
           value={String(oppAbertas.length)}
-          hint={`em aberto · ${formatBRL(oppAbertas.reduce((a, o) => a + o.valor, 0))}`}
+          hint={`em aberto · ${formatBRL(oppAbertas.reduce((a, o) => a + o.amount, 0))}`}
           icon={Target}
         />
         <Kpi
           label="Orçamentos pendentes"
           value={String(orcPendentes.length)}
-          hint={`a aprovar · ${orcamentos.length} no total`}
+          hint={`a aprovar · ${quotes.length} no total`}
           icon={FileText}
         />
         <Kpi
@@ -145,7 +182,7 @@ function Dashboard() {
         <Kpi
           label="OS abertas"
           value={String(osAbertas.length)}
-          hint={`agora · ${ordens.length} no total`}
+          hint={`agora · ${serviceOrders.length} no total`}
           icon={Wrench}
           accent="bg-warning/15 text-warning-foreground"
         />
@@ -166,7 +203,7 @@ function Dashboard() {
         <Kpi
           label="Estoque crítico"
           value={String(estoqueCritico.length)}
-          hint="itens abaixo do mínimo agora"
+          hint="itens ativos no catálogo"
           icon={Boxes}
         />
       </div>
@@ -207,7 +244,7 @@ function Dashboard() {
           <ul className="space-y-3 text-sm">
             <li className="flex justify-between">
               <span className="text-muted-foreground">Clientes</span>
-              <span className="font-medium">{clientes.length}</span>
+              <span className="font-medium">{customers.length}</span>
             </li>
             <li className="flex justify-between">
               <span className="text-muted-foreground">Leads</span>
@@ -215,11 +252,11 @@ function Dashboard() {
             </li>
             <li className="flex justify-between">
               <span className="text-muted-foreground">Orçamentos</span>
-              <span className="font-medium">{orcamentos.length}</span>
+              <span className="font-medium">{quotes.length}</span>
             </li>
             <li className="flex justify-between">
               <span className="text-muted-foreground">Pedidos</span>
-              <span className="font-medium">{pedidos.length}</span>
+              <span className="font-medium">{orders.length}</span>
             </li>
           </ul>
         </Card>
@@ -229,8 +266,8 @@ function Dashboard() {
         <Card className="p-5">
           <h2 className="font-semibold mb-4">Orçamentos recentes</h2>
           <div className="space-y-2">
-            {orcamentos.slice(0, 5).map((o) => {
-              const cli = clientes.find((c) => c.id === o.clienteId);
+            {quotes.slice(0, 5).map((o) => {
+              const cli = customers.find((c) => c.id === o.customerId);
               return (
                 <Link
                   key={o.id}
@@ -239,13 +276,13 @@ function Dashboard() {
                   className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-muted"
                 >
                   <div>
-                    <p className="text-sm font-medium">{o.numero}</p>
+                    <p className="text-sm font-medium">{o.quoteNumber}</p>
                     <p className="text-xs text-muted-foreground">
-                      {cli?.nome ?? "—"} · {formatDate(o.criadoEm)}
+                      {cli?.legalName ?? "—"} · {formatDate(o.createdAt)}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold">{formatBRL(calcOrcamentoTotal(o))}</p>
+                    <p className="text-sm font-semibold">{formatBRL(o.totalAmount)}</p>
                     <Badge variant="outline" className="text-[10px]">
                       {o.status}
                     </Badge>
@@ -253,7 +290,7 @@ function Dashboard() {
                 </Link>
               );
             })}
-            {!orcamentos.length && (
+            {!quotes.length && (
               <p className="text-sm text-muted-foreground">Nenhum orçamento ainda.</p>
             )}
           </div>
@@ -269,9 +306,9 @@ function Dashboard() {
                 className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-muted"
               >
                 <div>
-                  <p className="text-sm font-medium">{l.nome}</p>
+                  <p className="text-sm font-medium">{l.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {l.empresa ?? "Pessoa física"} · {l.origem}
+                    {l.companyName ?? "Pessoa física"} · {l.source}
                   </p>
                 </div>
                 <Badge variant="outline" className="text-[10px]">
@@ -297,7 +334,7 @@ function Dashboard() {
           </div>
           <div className="space-y-2">
             {osAbertas.slice(0, 5).map((o) => {
-              const cli = clientes.find((c) => c.id === o.clienteId);
+              const cli = customers.find((c) => c.id === o.customerId);
               return (
                 <Link
                   key={o.id}
@@ -307,14 +344,14 @@ function Dashboard() {
                 >
                   <div>
                     <p className="text-sm font-medium">
-                      {o.numero} — {o.titulo}
+                      {o.osNumber} — {o.description}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {cli?.nome ?? "—"} · {o.tecnico ?? "Sem técnico"}
+                      {cli?.legalName ?? "—"} · {o.assignedTo ?? "Sem técnico"}
                     </p>
                   </div>
                   <Badge variant="outline" className="text-[10px]">
-                    {o.prioridade}
+                    {o.priority}
                   </Badge>
                 </Link>
               );
@@ -336,8 +373,8 @@ function Dashboard() {
             </Link>
           </div>
           <div className="space-y-2">
-            {lancamentos
-              .filter((l) => l.status !== "pago" && l.tipo === "receber")
+            {receivables
+              .filter((l) => l.status !== "paid")
               .slice(0, 5)
               .map((l) => (
                 <div
@@ -345,21 +382,21 @@ function Dashboard() {
                   className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-muted"
                 >
                   <div>
-                    <p className="text-sm font-medium">{l.descricao}</p>
+                    <p className="text-sm font-medium">{l.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {clientes.find((c) => c.id === l.clienteId)?.nome ?? "—"} · vence{" "}
-                      {formatDate(l.vencimento)}
+                      {customers.find((c) => c.id === l.customerId)?.legalName ?? "—"} · vence{" "}
+                      {formatDate(l.dueDate)}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold">{formatBRL(l.valor)}</p>
+                    <p className="text-sm font-semibold">{formatBRL(l.amount)}</p>
                     <Badge variant="outline" className="text-[10px]">
                       {l.status}
                     </Badge>
                   </div>
                 </div>
               ))}
-            {!lancamentos.filter((l) => l.status !== "pago" && l.tipo === "receber").length && (
+            {!receivables.filter((l) => l.status !== "paid").length && (
               <p className="text-sm text-muted-foreground">Nenhuma fatura pendente.</p>
             )}
           </div>

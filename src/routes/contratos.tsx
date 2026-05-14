@@ -29,17 +29,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatBRL, formatDate } from "@/lib/mock/store";
-import {
-  CONTRATO_FREQUENCIA_LABEL,
-  CONTRATO_TIPO_LABEL,
-} from "@/lib/mock/types";
-import type {
-  ContratoFrequencia,
-  ContratoIndexador,
-  ContratoTipo,
-} from "@/lib/mock/types";
-import { Plus } from "lucide-react";
+import { useContracts, useCustomers, useCreateContract } from "@/hooks/domain";
+import { formatBRL, formatDate } from "@/lib/mock/store";
+import type { ContractType, BillingFrequency, ContractStatus } from "@/types/contract";
+import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/contratos")({
@@ -47,57 +40,85 @@ export const Route = createFileRoute("/contratos")({
   component: ContratosPage,
 });
 
-const statusVariant = (s: string) =>
-  s === "ativo" ? "default" : s === "suspenso" ? "secondary" : "outline";
+const CONTRATO_TIPO_LABEL: Record<ContractType, string> = {
+  sale_installation: "Venda + instalação",
+  rental: "Locação",
+  subscription: "Assinatura",
+  support: "Suporte",
+  mixed: "Misto",
+};
+
+const CONTRATO_FREQUENCIA_LABEL: Record<BillingFrequency, string> = {
+  one_time: "Pagamento único",
+  monthly: "Mensal",
+  quarterly: "Trimestral",
+  semiannual: "Semestral",
+  annual: "Anual",
+};
+
+const statusVariant = (s: ContractStatus) =>
+  s === "active" ? "default" : s === "suspended" ? "secondary" : "outline";
 
 function ContratosPage() {
-  const { contratos, clientes, addContrato } = useAppStore();
+  const { data: contracts = [], isLoading: isLoadingContracts } = useContracts();
+  const { data: customers = [], isLoading: isLoadingCustomers } = useCustomers();
+  const createContract = useCreateContract();
+
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    clienteId: "",
-    valorMensal: "",
-    inicio: new Date().toISOString().slice(0, 10),
-    fim: "",
-    indexador: "fixo" as ContratoIndexador,
-    tipo: "assinatura" as ContratoTipo,
-    frequencia: "mensal" as ContratoFrequencia,
-    descricao: "",
+    customerId: "",
+    monthlyAmount: "",
+    startDate: new Date().toISOString().slice(0, 10),
+    endDate: "",
+    priceIndexer: "fixo",
+    contractType: "subscription" as ContractType,
+    billingFrequency: "monthly" as BillingFrequency,
+    notes: "",
   });
 
-  const submit = () => {
-    if (!form.clienteId || !form.valorMensal || !form.fim) {
+  const isLoading = isLoadingContracts || isLoadingCustomers;
+
+  const submit = async () => {
+    if (!form.customerId || !form.monthlyAmount || !form.endDate) {
       toast.error("Preencha cliente, valor mensal e vigência.");
       return;
     }
-    addContrato({
-      clienteId: form.clienteId,
-      valorMensal: Number(form.valorMensal),
-      inicio: new Date(form.inicio).toISOString(),
-      fim: new Date(form.fim).toISOString(),
-      indexador: form.indexador,
-      tipo: form.tipo,
-      frequencia: form.frequencia,
-      descricao: form.descricao,
-    });
-    toast.success("Contrato criado.");
-    setOpen(false);
-    setForm({
-      clienteId: "",
-      valorMensal: "",
-      inicio: new Date().toISOString().slice(0, 10),
-      fim: "",
-      indexador: "fixo",
-      tipo: "assinatura",
-      frequencia: "mensal",
-      descricao: "",
-    });
+    try {
+      await createContract.mutateAsync({
+        customerId: form.customerId,
+        monthlyAmount: Number(form.monthlyAmount),
+        startDate: new Date(form.startDate).toISOString(),
+        endDate: new Date(form.endDate).toISOString(),
+        priceIndexer: form.priceIndexer,
+        contractType: form.contractType,
+        billingFrequency: form.billingFrequency,
+        notes: form.notes,
+        status: "active",
+        contractNumber: `CTR-${Math.floor(Math.random() * 10000)}`,
+        autoRenew: false,
+      });
+      toast.success("Contrato criado.");
+      setOpen(false);
+      setForm({
+        customerId: "",
+        monthlyAmount: "",
+        startDate: new Date().toISOString().slice(0, 10),
+        endDate: "",
+        priceIndexer: "fixo",
+        contractType: "subscription",
+        billingFrequency: "monthly",
+        notes: "",
+      });
+    } catch (err) {
+      toast.error("Erro ao criar contrato.");
+    }
   };
 
   return (
     <PageContainer>
       <PageHeader
         title="Contratos"
-        description={`${contratos.length} contratos · ${formatBRL(contratos.filter((c) => c.status === "ativo").reduce((a, c) => a + c.valorMensal, 0))}/mês ativo`}
+        description={`${contracts.length} contratos · ${formatBRL(contracts.filter((c) => c.status === "active").reduce((a, c) => a + c.monthlyAmount, 0))}/mês ativo`}
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -114,16 +135,16 @@ function ContratosPage() {
                 <div>
                   <Label>Cliente</Label>
                   <Select
-                    value={form.clienteId}
-                    onValueChange={(v) => setForm({ ...form, clienteId: v })}
+                    value={form.customerId}
+                    onValueChange={(v) => setForm({ ...form, customerId: v })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {clientes.map((c) => (
+                      {customers.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nome}
+                          {c.legalName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -134,16 +155,16 @@ function ContratosPage() {
                     <Label>Início</Label>
                     <Input
                       type="date"
-                      value={form.inicio}
-                      onChange={(e) => setForm({ ...form, inicio: e.target.value })}
+                      value={form.startDate}
+                      onChange={(e) => setForm({ ...form, startDate: e.target.value })}
                     />
                   </div>
                   <div>
                     <Label>Fim</Label>
                     <Input
                       type="date"
-                      value={form.fim}
-                      onChange={(e) => setForm({ ...form, fim: e.target.value })}
+                      value={form.endDate}
+                      onChange={(e) => setForm({ ...form, endDate: e.target.value })}
                     />
                   </div>
                 </div>
@@ -152,15 +173,15 @@ function ContratosPage() {
                     <Label>Valor mensal</Label>
                     <Input
                       type="number"
-                      value={form.valorMensal}
-                      onChange={(e) => setForm({ ...form, valorMensal: e.target.value })}
+                      value={form.monthlyAmount}
+                      onChange={(e) => setForm({ ...form, monthlyAmount: e.target.value })}
                     />
                   </div>
                   <div>
                     <Label>Indexador</Label>
                     <Select
-                      value={form.indexador}
-                      onValueChange={(v) => setForm({ ...form, indexador: v as ContratoIndexador })}
+                      value={form.priceIndexer}
+                      onValueChange={(v) => setForm({ ...form, priceIndexer: v })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -177,14 +198,14 @@ function ContratosPage() {
                   <div>
                     <Label>Tipo</Label>
                     <Select
-                      value={form.tipo}
-                      onValueChange={(v) => setForm({ ...form, tipo: v as ContratoTipo })}
+                      value={form.contractType}
+                      onValueChange={(v) => setForm({ ...form, contractType: v as ContractType })}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(CONTRATO_TIPO_LABEL) as ContratoTipo[]).map((k) => (
+                        {(Object.keys(CONTRATO_TIPO_LABEL) as ContractType[]).map((k) => (
                           <SelectItem key={k} value={k}>
                             {CONTRATO_TIPO_LABEL[k]}
                           </SelectItem>
@@ -195,22 +216,20 @@ function ContratosPage() {
                   <div>
                     <Label>Frequência</Label>
                     <Select
-                      value={form.frequencia}
+                      value={form.billingFrequency}
                       onValueChange={(v) =>
-                        setForm({ ...form, frequencia: v as ContratoFrequencia })
+                        setForm({ ...form, billingFrequency: v as BillingFrequency })
                       }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(CONTRATO_FREQUENCIA_LABEL) as ContratoFrequencia[]).map(
-                          (k) => (
-                            <SelectItem key={k} value={k}>
-                              {CONTRATO_FREQUENCIA_LABEL[k]}
-                            </SelectItem>
-                          ),
-                        )}
+                        {(Object.keys(CONTRATO_FREQUENCIA_LABEL) as BillingFrequency[]).map((k) => (
+                          <SelectItem key={k} value={k}>
+                            {CONTRATO_FREQUENCIA_LABEL[k]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -218,8 +237,8 @@ function ContratosPage() {
                 <div>
                   <Label>Descrição</Label>
                   <Input
-                    value={form.descricao}
-                    onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   />
                 </div>
               </div>
@@ -227,94 +246,103 @@ function ContratosPage() {
                 <Button variant="outline" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={submit}>Criar</Button>
+                <Button onClick={submit} disabled={createContract.isPending}>
+                  {createContract.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  Criar
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         }
       />
       <Card className="p-3 md:p-4">
-        <div className="md:hidden space-y-2">
-          {contratos.map((c) => {
-            const cli = clientes.find((x) => x.id === c.clienteId);
-            return (
-              <Link
-                key={c.id}
-                to="/contratos/$id"
-                params={{ id: c.id }}
-                className="block rounded-lg border p-3 hover:bg-muted"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{c.numero}</p>
-                  <Badge variant={statusVariant(c.status)}>{c.status}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {cli?.nome} · {CONTRATO_TIPO_LABEL[c.tipo]} ·{" "}
-                  {CONTRATO_FREQUENCIA_LABEL[c.frequencia]}
-                </p>
-                <p className="text-sm font-semibold mt-1">{formatBRL(c.valorMensal)}/mês</p>
-                <p className="text-xs text-muted-foreground">Até {formatDate(c.fim)}</p>
-              </Link>
-            );
-          })}
-        </div>
-        <div className="hidden md:block">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Frequência</TableHead>
-                <TableHead>Vigência</TableHead>
-                <TableHead>Mensal</TableHead>
-                <TableHead>Próx. reajuste</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contratos.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>
-                    <Link
-                      to="/contratos/$id"
-                      params={{ id: c.id }}
-                      className="font-medium hover:text-primary"
-                    >
-                      {c.numero}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {clientes.find((x) => x.id === c.clienteId)?.nome ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {CONTRATO_TIPO_LABEL[c.tipo]}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {CONTRATO_FREQUENCIA_LABEL[c.frequencia]}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(c.inicio)} → {formatDate(c.fim)}
-                  </TableCell>
-                  <TableCell className="font-semibold">{formatBRL(c.valorMensal)}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
-                    {c.proximoReajuste ? formatDate(c.proximoReajuste) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant(c.status)}>{c.status}</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!contratos.length && (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    Nenhum contrato.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            <div className="md:hidden space-y-2">
+              {contracts.map((c) => {
+                const cli = customers.find((x) => x.id === c.customerId);
+                return (
+                  <Link
+                    key={c.id}
+                    to="/contratos/$id"
+                    params={{ id: c.id }}
+                    className="block rounded-lg border p-3 hover:bg-muted"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{c.contractNumber}</p>
+                      <Badge variant={statusVariant(c.status)}>{c.status}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {cli?.legalName} · {CONTRATO_TIPO_LABEL[c.contractType]} ·{" "}
+                      {CONTRATO_FREQUENCIA_LABEL[c.billingFrequency || "monthly"]}
+                    </p>
+                    <p className="text-sm font-semibold mt-1">{formatBRL(c.monthlyAmount)}/mês</p>
+                    <p className="text-xs text-muted-foreground">
+                      Até {c.endDate ? formatDate(c.endDate) : "—"}
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Número</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Frequência</TableHead>
+                    <TableHead>Vigência</TableHead>
+                    <TableHead>Mensal</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contracts.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell>
+                        <Link
+                          to="/contratos/$id"
+                          params={{ id: c.id }}
+                          className="font-medium hover:text-primary"
+                        >
+                          {c.contractNumber}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {customers.find((x) => x.id === c.customerId)?.legalName ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {CONTRATO_TIPO_LABEL[c.contractType]}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {CONTRATO_FREQUENCIA_LABEL[c.billingFrequency || "monthly"]}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(c.startDate)} → {c.endDate ? formatDate(c.endDate) : "—"}
+                      </TableCell>
+                      <TableCell className="font-semibold">{formatBRL(c.monthlyAmount)}</TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant(c.status)}>{c.status}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!contracts.length && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        Nenhum contrato.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
       </Card>
     </PageContainer>
   );

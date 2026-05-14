@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,48 +14,93 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatDate } from "@/lib/mock/store";
-import { OS_STATUS, type OSStatus } from "@/lib/mock/types";
-import { ArrowLeft, CheckCircle2, Plus } from "lucide-react";
+import {
+  useServiceOrder,
+  useCustomer,
+  useAssets,
+  useOrder,
+  useContract,
+  useTicket,
+  useFinishServiceOrder,
+  useAddTask,
+  useToggleTask,
+  useUpdateServiceOrder,
+} from "@/hooks/domain";
+import { formatDate } from "@/lib/mock/store";
+import { ArrowLeft, CheckCircle2, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import type { ServiceOrderStatus } from "@/types/serviceOrder";
 
 export const Route = createFileRoute("/os/$id")({
   head: () => ({ meta: [{ title: "OS — GreenLink ADM" }] }),
   component: OSDetalhe,
-  notFoundComponent: () => (
-    <PageContainer>
-      <p className="text-muted-foreground">OS não encontrada.</p>
-    </PageContainer>
-  ),
 });
+
+const statusLabel: Record<ServiceOrderStatus, string> = {
+  open: "Aberta",
+  scheduled: "Agendada",
+  in_route: "Em rota",
+  in_progress: "Em execução",
+  waiting_parts: "Aguardando peças",
+  done: "Concluída",
+  cancelled: "Cancelada",
+  return_required: "Retorno necessário",
+};
 
 function OSDetalhe() {
   const { id } = Route.useParams();
-  const { ordens, clientes, ativos, pedidos, contratos, tickets, updateOS, toggleTarefa, concluirOS } =
-    useAppStore();
-  const os = ordens.find((o) => o.id === id);
-  if (!os) throw notFound();
-  const cli = clientes.find((c) => c.id === os.clienteId);
-  const vinculados = ativos.filter((a) => os.ativosIds.includes(a.id));
-  const pedidoRel = os.pedidoId ? pedidos.find((p) => p.id === os.pedidoId) : undefined;
-  const contratoRel = os.contratoId ? contratos.find((c) => c.id === os.contratoId) : undefined;
-  const ticketRel = os.ticketId ? tickets.find((t) => t.id === os.ticketId) : undefined;
-  const [novaTarefa, setNovaTarefa] = useState("");
-  const [horas, setHoras] = useState(String(os.horasGastas ?? 0));
-  const [obs, setObs] = useState(os.observacao ?? "");
+  const { data: os, isLoading: isLoadingOS } = useServiceOrder(id);
+  const { data: cli, isLoading: isLoadingCustomer } = useCustomer(os?.customerId);
+  const { data: assets = [], isLoading: isLoadingAssets } = useAssets();
+  const { data: pedidoRel, isLoading: isLoadingOrder } = useOrder(os?.orderId);
+  const { data: contratoRel, isLoading: isLoadingContract } = useContract(os?.contractId);
+  const { data: ticketRel, isLoading: isLoadingTicket } = useTicket(os?.ticketId);
+  const finishOS = useFinishServiceOrder();
+  const addTask = useAddTask();
+  const toggleTask = useToggleTask();
+  const updateOS = useUpdateServiceOrder();
 
-  const addTarefa = () => {
+  const [novaTarefa, setNovaTarefa] = useState("");
+
+  const handleAddTask = async () => {
     if (!novaTarefa.trim()) return;
-    updateOS(os.id, {
-      tarefas: [
-        ...os.tarefas,
-        { id: Math.random().toString(36).slice(2, 10), descricao: novaTarefa, feita: false },
-      ],
-    });
-    setNovaTarefa("");
+    try {
+      await addTask.mutateAsync({ osId: os!.id, title: novaTarefa });
+      setNovaTarefa("");
+      toast.success("Tarefa adicionada.");
+    } catch (err) {
+      toast.error("Erro ao adicionar tarefa.");
+    }
   };
 
-  const feitas = os.tarefas.filter((t) => t.feita).length;
+  const isLoading =
+    isLoadingOS ||
+    isLoadingCustomer ||
+    isLoadingAssets ||
+    isLoadingOrder ||
+    isLoadingContract ||
+    isLoadingTicket;
+
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (!os) {
+    return (
+      <PageContainer>
+        <p className="text-muted-foreground">OS não encontrada.</p>
+      </PageContainer>
+    );
+  }
+
+  const vinculados = assets.filter((a) => a.id === os.assetId);
+  const feitas = os.tasks.filter((t) => t.status === "done").length;
 
   return (
     <PageContainer>
@@ -66,33 +111,57 @@ function OSDetalhe() {
         <ArrowLeft className="h-4 w-4" /> Ordens de Serviço
       </Link>
       <PageHeader
-        title={`${os.numero} — ${os.titulo}`}
-        description={`${cli?.nome ?? "—"} · ${os.tecnico ?? "Sem técnico"}`}
+        title={`${os.osNumber} — ${os.description}`}
+        description={`${cli?.legalName ?? "—"} · ${os.assignedTo ?? "Sem técnico"}`}
         actions={
           <div className="flex gap-2 flex-wrap">
             <Select
               value={os.status}
-              onValueChange={(v) => updateOS(os.id, { status: v as OSStatus })}
+              onValueChange={async (v) => {
+                try {
+                  await updateOS.mutateAsync({
+                    id: os.id,
+                    data: { status: v as ServiceOrderStatus },
+                  });
+                  toast.success("Status atualizado.");
+                } catch (err) {
+                  toast.error("Erro ao atualizar status.");
+                }
+              }}
+              disabled={updateOS.isPending}
             >
               <SelectTrigger className="w-[160px]">
-                <SelectValue />
+                {updateOS.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <SelectValue />
+                )}
               </SelectTrigger>
               <SelectContent>
-                {OS_STATUS.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.label}
+                {(Object.keys(statusLabel) as ServiceOrderStatus[]).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {statusLabel[s]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {os.status !== "concluida" && (
+            {os.status !== "done" && (
               <Button
-                onClick={() => {
-                  concluirOS(os.id);
-                  toast.success("OS concluída.");
+                disabled={finishOS.isPending}
+                onClick={async () => {
+                  try {
+                    await finishOS.mutateAsync(os.id);
+                    toast.success("OS concluída.");
+                  } catch (err) {
+                    toast.error("Erro ao concluir OS.");
+                  }
                 }}
               >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+                {finishOS.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                )}
                 Concluir
               </Button>
             )}
@@ -105,15 +174,25 @@ function OSDetalhe() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">
-                Checklist ({feitas}/{os.tarefas.length})
+                Checklist ({feitas}/{os.tasks.length})
               </h2>
             </div>
             <ul className="space-y-2">
-              {os.tarefas.map((t) => (
+              {os.tasks.map((t) => (
                 <li key={t.id} className="flex items-center gap-2">
-                  <Checkbox checked={t.feita} onCheckedChange={() => toggleTarefa(os.id, t.id)} />
-                  <span className={t.feita ? "line-through text-muted-foreground" : ""}>
-                    {t.descricao}
+                  <Checkbox
+                    checked={t.status === "done"}
+                    onCheckedChange={async () => {
+                      try {
+                        await toggleTask.mutateAsync({ osId: os.id, taskId: t.id });
+                      } catch (err) {
+                        toast.error("Erro ao atualizar tarefa.");
+                      }
+                    }}
+                    disabled={toggleTask.isPending}
+                  />
+                  <span className={t.status === "done" ? "line-through text-muted-foreground" : ""}>
+                    {t.title}
                   </span>
                 </li>
               ))}
@@ -123,37 +202,29 @@ function OSDetalhe() {
                 placeholder="Nova tarefa"
                 value={novaTarefa}
                 onChange={(e) => setNovaTarefa(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTarefa()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleAddTask();
+                  }
+                }}
               />
-              <Button onClick={addTarefa}>
-                <Plus className="h-4 w-4" />
+              <Button onClick={handleAddTask} disabled={addTask.isPending}>
+                {addTask.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
 
           <div>
             <h2 className="font-semibold mb-2">Registro</h2>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs uppercase text-muted-foreground">Horas gastas</label>
-                <Input
-                  type="number"
-                  value={horas}
-                  onChange={(e) => setHoras(e.target.value)}
-                  onBlur={() => updateOS(os.id, { horasGastas: Number(horas) })}
-                />
-              </div>
-            </div>
             <div className="mt-3">
               <label className="text-xs uppercase text-muted-foreground">
-                Observações / assinatura
+                Observações / Detalhes técnicos
               </label>
-              <Textarea
-                value={obs}
-                onChange={(e) => setObs(e.target.value)}
-                onBlur={() => updateOS(os.id, { observacao: obs })}
-                rows={3}
-              />
+              <Textarea value={os.description} rows={3} readOnly />
             </div>
           </div>
         </Card>
@@ -164,28 +235,20 @@ function OSDetalhe() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
-                <Badge>{OS_STATUS.find((s) => s.id === os.status)?.label}</Badge>
+                <Badge>{statusLabel[os.status]}</Badge>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Prioridade</span>
-                <span className="font-medium uppercase">{os.prioridade}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">SLA</span>
-                <span>{formatDate(os.sla)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Endereço</span>
-                <span className="text-right">{os.endereco ?? "—"}</span>
+                <span className="font-medium uppercase">{os.priority}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Aberta em</span>
-                <span>{formatDate(os.criadoEm)}</span>
+                <span>{formatDate(os.createdAt)}</span>
               </div>
-              {os.concluidaEm && (
+              {os.completedAt && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Concluída em</span>
-                  <span>{formatDate(os.concluidaEm)}</span>
+                  <span>{formatDate(os.completedAt)}</span>
                 </div>
               )}
             </div>
@@ -201,7 +264,7 @@ function OSDetalhe() {
                     params={{ id: pedidoRel.id }}
                     className="text-primary hover:underline"
                   >
-                    {pedidoRel.numero}
+                    {pedidoRel.orderNumber}
                   </Link>
                 ) : (
                   <span>—</span>
@@ -215,7 +278,7 @@ function OSDetalhe() {
                     params={{ id: contratoRel.id }}
                     className="text-primary hover:underline"
                   >
-                    {contratoRel.numero}
+                    {contratoRel.contractNumber}
                   </Link>
                 ) : (
                   <span>—</span>
@@ -229,7 +292,7 @@ function OSDetalhe() {
                     params={{ id: ticketRel.id }}
                     className="text-primary hover:underline"
                   >
-                    {ticketRel.numero}
+                    {ticketRel.ticketNumber}
                   </Link>
                 ) : (
                   <span>—</span>
@@ -243,10 +306,10 @@ function OSDetalhe() {
               <ul className="space-y-1 text-sm">
                 {vinculados.map((a) => (
                   <li key={a.id} className="flex justify-between">
-                    <Link to="/ativos/$id" params={{ id: a.id }} className="hover:text-primary">
-                      {a.tag}
+                    <Link to="/ativos" className="hover:text-primary">
+                      {a.assetTag}
                     </Link>
-                    <span className="text-muted-foreground text-xs">{a.modelo}</span>
+                    <span className="text-muted-foreground text-xs">{a.siteName}</span>
                   </li>
                 ))}
               </ul>

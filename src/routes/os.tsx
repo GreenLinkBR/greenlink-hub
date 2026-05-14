@@ -22,61 +22,91 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatDate } from "@/lib/mock/store";
-import { OS_STATUS, type OSPrioridade, type OSStatus } from "@/lib/mock/types";
-import { Plus, MapPin, Clock } from "lucide-react";
+import { useServiceOrders, useCustomers, useCreateServiceOrder } from "@/hooks/domain";
+import { formatDate } from "@/lib/mock/store";
+import { Plus, MapPin, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import type { ServiceOrderStatus, ServicePriority } from "@/types/serviceOrder";
 
 export const Route = createFileRoute("/os")({
   head: () => ({ meta: [{ title: "Ordens de Serviço — GreenLink ADM" }] }),
   component: OSList,
 });
 
-const prioColor: Record<OSPrioridade, string> = {
-  baixa: "bg-muted text-foreground",
-  media: "bg-primary/10 text-primary",
-  alta: "bg-warning/15 text-warning-foreground",
-  critica: "bg-destructive/15 text-destructive",
+const statusLabel: Record<ServiceOrderStatus, string> = {
+  open: "Aberta",
+  scheduled: "Agendada",
+  in_route: "Em rota",
+  in_progress: "Em execução",
+  waiting_parts: "Aguardando peças",
+  done: "Concluída",
+  cancelled: "Cancelada",
+  return_required: "Retorno necessário",
 };
 
+const prioColor: Record<ServicePriority, string> = {
+  low: "bg-muted text-foreground",
+  medium: "bg-primary/10 text-primary",
+  high: "bg-warning/15 text-warning-foreground",
+  urgent: "bg-destructive/15 text-destructive",
+};
+
+const isServiceOrderStatus = (v: string): v is ServiceOrderStatus => v in statusLabel;
+
 function OSList() {
-  const { ordens, clientes, addOS } = useAppStore();
-  const [filter, setFilter] = useState<"todas" | OSStatus>("todas");
+  const { data: ordens = [], isLoading: isLoadingOS } = useServiceOrders();
+  const { data: customers = [], isLoading: isLoadingCustomers } = useCustomers();
+  const createOS = useCreateServiceOrder();
+
+  const [filter, setFilter] = useState<"todas" | ServiceOrderStatus>("todas");
   const [tecnico, setTecnico] = useState<string>("todos");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    titulo: "",
-    clienteId: "",
-    prioridade: "media" as OSPrioridade,
-    endereco: "",
-    tecnico: "",
+    description: "",
+    customerId: "",
+    priority: "medium" as ServicePriority,
+    assignedTo: "",
   });
 
+  const isLoading = isLoadingOS || isLoadingCustomers;
+
   const tecnicos = Array.from(
-    new Set(ordens.map((o) => o.tecnico).filter(Boolean) as string[]),
+    new Set(ordens.map((o) => o.assignedTo).filter(Boolean) as string[]),
   ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+
   const filtradas = ordens.filter((o) => {
     if (filter !== "todas" && o.status !== filter) return false;
-    if (tecnico !== "todos" && (o.tecnico ?? "Sem técnico") !== tecnico) return false;
+    if (tecnico !== "todos" && (o.assignedTo ?? "Sem técnico") !== tecnico) return false;
     return true;
   });
 
-  const submit = () => {
-    if (!form.titulo || !form.clienteId) {
+  const submit = async () => {
+    if (!form.description || !form.customerId) {
       toast.error("Preencha título e cliente.");
       return;
     }
-    addOS({ ...form, tarefas: [], ativosIds: [] });
-    toast.success("OS criada.");
-    setOpen(false);
-    setForm({ titulo: "", clienteId: "", prioridade: "media", endereco: "", tecnico: "" });
+    try {
+      await createOS.mutateAsync({
+        osNumber: `OS-${Math.floor(Math.random() * 10000)}`,
+        description: form.description,
+        customerId: form.customerId,
+        priority: form.priority,
+        assignedTo: form.assignedTo,
+        status: "open",
+      });
+      toast.success("OS criada.");
+      setOpen(false);
+      setForm({ description: "", customerId: "", priority: "medium", assignedTo: "" });
+    } catch (err) {
+      toast.error("Erro ao criar OS.");
+    }
   };
 
   return (
     <PageContainer>
       <PageHeader
         title="Ordens de Serviço"
-        description={`${ordens.length} OS · ${ordens.filter((o) => o.status !== "concluida" && o.status !== "cancelada").length} em aberto`}
+        description={`${ordens.length} OS · ${ordens.filter((o) => o.status !== "done" && o.status !== "cancelled").length} em aberto`}
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -93,23 +123,23 @@ function OSList() {
                 <div>
                   <Label>Título</Label>
                   <Input
-                    value={form.titulo}
-                    onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
                   />
                 </div>
                 <div>
                   <Label>Cliente</Label>
                   <Select
-                    value={form.clienteId}
-                    onValueChange={(v) => setForm({ ...form, clienteId: v })}
+                    value={form.customerId}
+                    onValueChange={(v) => setForm({ ...form, customerId: v })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {clientes.map((c) => (
+                      {customers.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nome}
+                          {c.legalName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -119,41 +149,37 @@ function OSList() {
                   <div>
                     <Label>Prioridade</Label>
                     <Select
-                      value={form.prioridade}
-                      onValueChange={(v) => setForm({ ...form, prioridade: v as OSPrioridade })}
+                      value={form.priority}
+                      onValueChange={(v) => setForm({ ...form, priority: v as ServicePriority })}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="baixa">Baixa</SelectItem>
-                        <SelectItem value="media">Média</SelectItem>
-                        <SelectItem value="alta">Alta</SelectItem>
-                        <SelectItem value="critica">Crítica</SelectItem>
+                        <SelectItem value="low">Baixa</SelectItem>
+                        <SelectItem value="medium">Média</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="urgent">Urgente</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <Label>Técnico</Label>
                     <Input
-                      value={form.tecnico}
-                      onChange={(e) => setForm({ ...form, tecnico: e.target.value })}
+                      value={form.assignedTo}
+                      onChange={(e) => setForm({ ...form, assignedTo: e.target.value })}
                     />
                   </div>
-                </div>
-                <div>
-                  <Label>Endereço</Label>
-                  <Input
-                    value={form.endereco}
-                    onChange={(e) => setForm({ ...form, endereco: e.target.value })}
-                  />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={submit}>Criar</Button>
+                <Button onClick={submit} disabled={createOS.isPending}>
+                  {createOS.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  Criar
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -162,14 +188,17 @@ function OSList() {
 
       <Tabs
         value={filter}
-        onValueChange={(v) => setFilter(v as "todas" | OSStatus)}
+        onValueChange={(v) => {
+          if (v === "todas") setFilter("todas");
+          else if (isServiceOrderStatus(v)) setFilter(v);
+        }}
         className="mb-4"
       >
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="todas">Todas ({ordens.length})</TabsTrigger>
-          {OS_STATUS.map((s) => (
-            <TabsTrigger key={s.id} value={s.id}>
-              {s.label} ({ordens.filter((o) => o.status === s.id).length})
+          {(Object.keys(statusLabel) as ServiceOrderStatus[]).map((s) => (
+            <TabsTrigger key={s} value={s}>
+              {statusLabel[s]} ({ordens.filter((o) => o.status === s).length})
             </TabsTrigger>
           ))}
         </TabsList>
@@ -195,60 +224,60 @@ function OSList() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filtradas.map((o) => {
-          const cli = clientes.find((c) => c.id === o.clienteId);
-          const total = o.tarefas.length;
-          const feitas = o.tarefas.filter((t) => t.feita).length;
-          return (
-            <Link key={o.id} to="/os/$id" params={{ id: o.id }}>
-              <Card className="p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold">{o.numero}</span>
-                  <span
-                    className={`text-[10px] uppercase tracking-wide rounded-md px-2 py-0.5 ${prioColor[o.prioridade]}`}
-                  >
-                    {o.prioridade}
-                  </span>
-                </div>
-                <p className="font-medium leading-tight">{o.titulo}</p>
-                <p className="text-xs text-muted-foreground mt-1">{cli?.nome ?? "—"}</p>
-                {o.endereco && (
-                  <p className="text-xs text-muted-foreground inline-flex items-center gap-1 mt-1">
-                    <MapPin className="h-3 w-3" />
-                    {o.endereco}
-                  </p>
-                )}
-                <div className="flex items-center justify-between mt-3 pt-3 border-t text-xs">
-                  <Badge variant="outline">{OS_STATUS.find((s) => s.id === o.status)?.label}</Badge>
-                  <span className="text-muted-foreground inline-flex items-center gap-1">
-                    {o.sla && (
-                      <>
-                        <Clock className="h-3 w-3" />
-                        {formatDate(o.sla)}
-                      </>
-                    )}
-                  </span>
-                </div>
-                {total > 0 && (
-                  <div className="mt-2">
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full bg-primary"
-                        style={{ width: `${(feitas / total) * 100}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {feitas}/{total} tarefas
-                    </p>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtradas.map((o) => {
+            const cli = customers.find((c) => c.id === o.customerId);
+            const total = o.tasks.length;
+            const feitas = o.tasks.filter((t) => t.status === "done").length;
+            return (
+              <Link key={o.id} to="/os/$id" params={{ id: o.id }}>
+                <Card className="p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold">{o.osNumber}</span>
+                    <span
+                      className={`text-[10px] uppercase tracking-wide rounded-md px-2 py-0.5 ${prioColor[o.priority]}`}
+                    >
+                      {o.priority}
+                    </span>
                   </div>
-                )}
-              </Card>
-            </Link>
-          );
-        })}
-        {!filtradas.length && <p className="text-sm text-muted-foreground">Nenhuma OS.</p>}
-      </div>
+                  <p className="font-medium leading-tight">{o.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{cli?.legalName ?? "—"}</p>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t text-xs">
+                    <Badge variant="outline">{statusLabel[o.status]}</Badge>
+                    <span className="text-muted-foreground inline-flex items-center gap-1">
+                      {o.createdAt && (
+                        <>
+                          <Clock className="h-3 w-3" />
+                          {formatDate(o.createdAt)}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  {total > 0 && (
+                    <div className="mt-2">
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-primary"
+                          style={{ width: `${(feitas / total) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {feitas}/{total} tarefas
+                      </p>
+                    </div>
+                  )}
+                </Card>
+              </Link>
+            );
+          })}
+          {!filtradas.length && <p className="text-sm text-muted-foreground">Nenhuma OS.</p>}
+        </div>
+      )}
     </PageContainer>
   );
 }

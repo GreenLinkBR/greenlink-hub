@@ -15,6 +15,8 @@ export const Route = createFileRoute("/ativos/$id")({
   ),
 });
 
+type TimelineEntry = { d: string; label: string };
+
 function AtivoDetalhe() {
   const { id } = Route.useParams();
   const { ativos, clientes, ordens, tickets, contratos } = useAppStore();
@@ -23,9 +25,12 @@ function AtivoDetalhe() {
   const cli = clientes.find((c) => c.id === a.clienteId);
   const historico = ordens.filter((o) => o.ativosIds.includes(a.id));
   const ticketsRel = tickets.filter((t) => historico.some((o) => o.ticketId === t.id));
-  const contratoRel = contratos.find(
-    (c) => c.clienteId === a.clienteId && c.status === "ativo",
-  );
+  const contratoRel = contratos.find((c) => c.clienteId === a.clienteId && c.status === "ativo");
+  const timeline: TimelineEntry[] = [
+    ...(a.instaladoEm ? [{ d: a.instaladoEm, label: "Instalado" }] : []),
+    ...historico.map((o) => ({ d: o.criadoEm, label: `OS ${o.numero}: ${o.titulo}` })),
+    ...(a.ultimaLeitura ? [{ d: a.ultimaLeitura, label: "Última leitura" }] : []),
+  ].sort((x, y) => (x.d < y.d ? 1 : -1));
 
   return (
     <PageContainer>
@@ -88,23 +93,13 @@ function AtivoDetalhe() {
           <div className="mt-6">
             <h3 className="text-sm font-semibold mb-2">Linha do tempo</h3>
             <ol className="relative border-l ml-2 space-y-3">
-              {[
-                a.instaladoEm && { d: a.instaladoEm, label: "Instalado" },
-                ...historico.map((o) => ({
-                  d: o.criadoEm,
-                  label: `OS ${o.numero}: ${o.titulo}`,
-                })),
-                a.ultimaLeitura && { d: a.ultimaLeitura, label: "Última leitura" },
-              ]
-                .filter(Boolean)
-                .sort((x: any, y: any) => (x.d < y.d ? 1 : -1))
-                .map((e: any, i) => (
-                  <li key={i} className="ml-4">
-                    <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-primary" />
-                    <p className="text-xs text-muted-foreground">{formatDate(e.d)}</p>
-                    <p className="text-sm">{e.label}</p>
-                  </li>
-                ))}
+              {timeline.map((e, i) => (
+                <li key={i} className="ml-4">
+                  <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-primary" />
+                  <p className="text-xs text-muted-foreground">{formatDate(e.d)}</p>
+                  <p className="text-sm">{e.label}</p>
+                </li>
+              ))}
             </ol>
           </div>
         </Card>

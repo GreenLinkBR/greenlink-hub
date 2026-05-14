@@ -33,6 +33,7 @@ src/
 ```
 
 Regras:
+
 - Componentes de UI **não** chamam `useAppStore` direto; consomem hooks por domínio.
 - Hoje os services delegam ao mock store; trocar mock por API real será só editar `services/*`.
 - Nomenclatura em **inglês** nos types/services (alinhado ao OpenAPI/Prisma); UI continua em PT-BR.
@@ -41,6 +42,7 @@ Regras:
 ## Etapa B — Correção semântica (Prompt 2)
 
 Renomeações nas telas/labels/badges/rotas:
+
 - `Orçamento` permanece como label PT, mas tipo passa a ser `Quote` com status `draft | sent | approved | rejected | expired | cancelled` (não mais `convertido`).
 - `Pedido` = `CustomerOrder` com status `open | approved | invoiced | partially_fulfilled | fulfilled | cancelled`.
 - `Contrato` ganha `type` e `billingFrequency` (hoje só tem `valorMensal` + `indexador`).

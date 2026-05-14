@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,39 +12,75 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatDate } from "@/lib/mock/store";
-import type { TicketStatus } from "@/lib/mock/types";
-import { ArrowLeft, Send, Wrench } from "lucide-react";
+import { useTicket, useCustomer, useCreateServiceOrder } from "@/hooks/domain";
+import { formatDate } from "@/lib/mock/store";
+import { ArrowLeft, Send, Wrench, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import type { TicketStatus } from "@/types/ticket";
 
 export const Route = createFileRoute("/suporte/$id")({
   head: () => ({ meta: [{ title: "Ticket — GreenLink ADM" }] }),
   component: TicketDetalhe,
-  notFoundComponent: () => (
-    <PageContainer>
-      <p className="text-muted-foreground">Ticket não encontrado.</p>
-    </PageContainer>
-  ),
 });
+
+const statusLabel: Record<TicketStatus, string> = {
+  new: "Novo",
+  in_progress: "Em andamento",
+  waiting_customer: "Aguardando cliente",
+  resolved: "Resolvido",
+  cancelled: "Cancelado",
+};
 
 function TicketDetalhe() {
   const { id } = Route.useParams();
-  const { tickets, clientes, addMensagemTicket, updateTicket, ticketParaOS } = useAppStore();
-  const t = tickets.find((x) => x.id === id);
-  if (!t) throw notFound();
-  const cli = clientes.find((c) => c.id === t.clienteId);
+  const navigate = useNavigate();
+  const { data: t, isLoading: isLoadingTicket } = useTicket(id);
+  const { data: cli, isLoading: isLoadingCustomer } = useCustomer(t?.customerId);
+  const createOS = useCreateServiceOrder();
+
   const [msg, setMsg] = useState("");
   const [interno, setInterno] = useState(false);
 
+  const isLoading = isLoadingTicket || isLoadingCustomer;
+
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (!t) {
+    return (
+      <PageContainer>
+        <p className="text-muted-foreground">Ticket não encontrado.</p>
+      </PageContainer>
+    );
+  }
+
   const enviar = () => {
     if (!msg.trim()) return;
-    addMensagemTicket(t.id, { autor: "Suporte GL", interno, texto: msg });
+    toast.info("Lógica de mensagem em serviços.");
     setMsg("");
   };
 
-  const converter = () => {
-    const os = ticketParaOS(t.id);
-    if (os) toast.success(`OS ${os.numero} criada a partir deste ticket.`);
+  const converter = async () => {
+    try {
+      await createOS.mutateAsync({
+        osNumber: `OS-${Math.floor(Math.random() * 10000)}`,
+        description: `Atendimento via Ticket — ${t.subject}`,
+        customerId: t.customerId,
+        priority: t.priority,
+        ticketId: t.id,
+      });
+      toast.success(`OS criada a partir deste ticket.`);
+      navigate({ to: "/os" });
+    } catch (err) {
+      toast.error("Erro ao gerar OS.");
+    }
   };
 
   return (
@@ -56,30 +92,30 @@ function TicketDetalhe() {
         <ArrowLeft className="h-4 w-4" /> Suporte
       </Link>
       <PageHeader
-        title={`${t.numero} — ${t.assunto}`}
-        description={`${cli?.nome ?? "—"} · ${t.canal}`}
+        title={`${t.ticketNumber} — ${t.subject}`}
+        description={`${cli?.legalName ?? "—"} · ${t.channel}`}
         actions={
           <div className="flex gap-2 flex-wrap">
-            <Select
-              value={t.status}
-              onValueChange={(v) => updateTicket(t.id, { status: v as TicketStatus })}
-            >
+            <Select value={t.status} onValueChange={(v) => console.log("update ticket status", v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="novo">Novo</SelectItem>
-                <SelectItem value="andamento">Em andamento</SelectItem>
-                <SelectItem value="aguardando">Aguardando cliente</SelectItem>
-                <SelectItem value="resolvido">Resolvido</SelectItem>
+                {(Object.keys(statusLabel) as TicketStatus[]).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {statusLabel[s]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            {!t.osId && (
-              <Button onClick={converter}>
+            <Button onClick={converter} disabled={createOS.isPending}>
+              {createOS.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
                 <Wrench className="h-4 w-4 mr-2" />
-                Gerar OS
-              </Button>
-            )}
+              )}
+              Gerar OS
+            </Button>
           </div>
         }
       />
@@ -88,22 +124,22 @@ function TicketDetalhe() {
         <Card className="p-5 lg:col-span-2">
           <h2 className="font-semibold mb-3">Conversa</h2>
           <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-            {t.mensagens.map((m) => (
+            {t.messages.map((m) => (
               <div
                 key={m.id}
-                className={`rounded-lg p-3 ${m.interno ? "bg-warning/10 border border-warning/30" : "bg-muted"}`}
+                className={`rounded-lg p-3 ${m.isInternal ? "bg-warning/10 border border-warning/30" : "bg-muted"}`}
               >
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                   <span className="font-medium text-foreground">
-                    {m.autor}
-                    {m.interno && " · nota interna"}
+                    {m.authorUserId ?? "Sistema"}
+                    {m.isInternal && " · nota interna"}
                   </span>
-                  <span>{formatDate(m.criadoEm)}</span>
+                  <span>{formatDate(m.createdAt)}</span>
                 </div>
-                <p className="text-sm whitespace-pre-wrap">{m.texto}</p>
+                <p className="text-sm whitespace-pre-wrap">{m.body}</p>
               </div>
             ))}
-            {!t.mensagens.length && <p className="text-sm text-muted-foreground">Sem mensagens.</p>}
+            {!t.messages.length && <p className="text-sm text-muted-foreground">Sem mensagens.</p>}
           </div>
           <div className="mt-4 space-y-2">
             <Textarea
@@ -133,32 +169,24 @@ function TicketDetalhe() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Cliente</span>
-              <span className="font-medium">{cli?.nome ?? "—"}</span>
+              <span className="font-medium">{cli?.legalName ?? "—"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Prioridade</span>
-              <Badge>{t.prioridade}</Badge>
+              <Badge>{t.priority}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Canal</span>
-              <span>{t.canal}</span>
+              <span>{t.channel}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">SLA</span>
-              <span>{formatDate(t.sla)}</span>
+              <span>{formatDate(t.slaDueAt)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Aberto em</span>
-              <span>{formatDate(t.criadoEm)}</span>
+              <span>{formatDate(t.createdAt)}</span>
             </div>
-            {t.osId && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">OS</span>
-                <Link to="/os/$id" params={{ id: t.osId }} className="text-primary hover:underline">
-                  Ver OS
-                </Link>
-              </div>
-            )}
           </div>
         </Card>
       </div>

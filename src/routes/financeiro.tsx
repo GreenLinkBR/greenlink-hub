@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatBRL, formatDate, visualLancamentoStatus } from "@/lib/mock/store";
-import type { Cliente, Lancamento, LancamentoTipo, LancamentoStatusVisual } from "@/lib/mock/types";
+import { useReceivables, usePayables, useCustomers, useReceivePayment } from "@/hooks/domain";
+import { formatBRL, formatDate } from "@/lib/mock/store";
 import {
   Plus,
   CheckCircle2,
@@ -41,54 +41,53 @@ import {
   TrendingDown,
   Wallet,
   AlertCircle,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { BillingStatus } from "@/types/contract";
+import type { Receivable, Payable } from "@/types/finance";
+import type { Customer } from "@/types/customer";
 
 export const Route = createFileRoute("/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro — GreenLink ADM" }] }),
   component: Financeiro,
 });
 
-const statusVariant = (s: LancamentoStatusVisual) =>
-  s === "pago"
+const statusVariant = (s: BillingStatus) =>
+  s === "paid"
     ? "default"
-    : s === "vencido"
+    : s === "overdue"
       ? "destructive"
-      : s === "parcial"
+      : s === "partial"
         ? "secondary"
         : "outline";
 
-const statusLabel: Record<LancamentoStatusVisual, string> = {
-  aberto: "Aberto",
-  parcial: "Parcial",
-  pago: "Pago",
-  vencido: "Vencido",
-  cancelado: "Cancelado",
+const statusLabel: Record<BillingStatus, string> = {
+  open: "Aberto",
+  partial: "Parcial",
+  paid: "Pago",
+  overdue: "Vencido",
+  cancelled: "Cancelado",
 };
 
 function Financeiro() {
-  const {
-    lancamentos,
-    clientes,
-    addLancamento,
-    pagarLancamento,
-    registrarRecebimento,
-    estornar,
-  } = useAppStore();
+  const { data: receivables = [], isLoading: isLoadingReceivables } = useReceivables();
+  const { data: payables = [], isLoading: isLoadingPayables } = usePayables();
+  const { data: customers = [], isLoading: isLoadingCustomers } = useCustomers();
+  const receivePayment = useReceivePayment();
 
-  const lancs = lancamentos;
-  const visual = useMemo(
-    () =>
-      Object.fromEntries(lancs.map((l) => [l.id, visualLancamentoStatus(l)])) as Record<
-        string,
-        LancamentoStatusVisual
-      >,
-    [lancs],
-  );
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    tipo: "receber",
+    description: "",
+    customerId: "",
+    amount: "",
+    dueDate: new Date().toISOString().slice(0, 10),
+  });
 
-  const receber = lancs.filter((l) => l.tipo === "receber");
-  const pagar = lancs.filter((l) => l.tipo === "pagar");
+  const isLoading = isLoadingReceivables || isLoadingPayables || isLoadingCustomers;
+
   const in30 = (d: string) => {
     const x = new Date(d);
     const t = new Date();
@@ -96,50 +95,21 @@ function Financeiro() {
     lim.setDate(t.getDate() + 30);
     return x <= lim;
   };
-  const totReceber30 = receber
-    .filter((l) => l.status !== "pago" && in30(l.vencimento))
-    .reduce((a, l) => a + (l.valor - (l.valorPago ?? 0)), 0);
-  const totPagar30 = pagar
-    .filter((l) => l.status !== "pago" && in30(l.vencimento))
-    .reduce((a, l) => a + l.valor, 0);
-  const inadimplencia = receber
-    .filter((l) => visual[l.id] === "vencido")
-    .reduce((a, l) => a + (l.valor - (l.valorPago ?? 0)), 0);
+
+  const totReceber30 = receivables
+    .filter((l) => l.status !== "paid" && in30(l.dueDate))
+    .reduce((a, l) => a + l.openAmount, 0);
+  const totPagar30 = payables
+    .filter((l) => l.status !== "paid" && in30(l.dueDate))
+    .reduce((a, l) => a + l.openAmount, 0);
+  const inadimplencia = receivables
+    .filter((l) => l.status === "overdue")
+    .reduce((a, l) => a + l.openAmount, 0);
   const saldoPrev = totReceber30 - totPagar30;
 
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    tipo: "receber" as LancamentoTipo,
-    descricao: "",
-    clienteId: "",
-    fornecedor: "",
-    valor: "",
-    vencimento: new Date().toISOString().slice(0, 10),
-  });
-  const submit = () => {
-    if (!form.descricao || !form.valor) {
-      toast.error("Preencha descrição e valor.");
-      return;
-    }
-    addLancamento({
-      tipo: form.tipo,
-      descricao: form.descricao,
-      clienteId: form.tipo === "receber" ? form.clienteId || undefined : undefined,
-      fornecedor: form.tipo === "pagar" ? form.fornecedor : undefined,
-      valor: Number(form.valor),
-      vencimento: new Date(form.vencimento).toISOString(),
-      origem: "manual",
-    });
-    toast.success("Lançamento criado.");
+  const submit = async () => {
+    toast.info("Lógica de criação em serviços.");
     setOpen(false);
-    setForm({
-      tipo: "receber",
-      descricao: "",
-      clienteId: "",
-      fornecedor: "",
-      valor: "",
-      vencimento: new Date().toISOString().slice(0, 10),
-    });
   };
 
   return (
@@ -162,10 +132,7 @@ function Financeiro() {
               <div className="space-y-3">
                 <div>
                   <Label>Tipo</Label>
-                  <Select
-                    value={form.tipo}
-                    onValueChange={(v) => setForm({ ...form, tipo: v as LancamentoTipo })}
-                  >
+                  <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -178,36 +145,28 @@ function Financeiro() {
                 <div>
                   <Label>Descrição</Label>
                   <Input
-                    value={form.descricao}
-                    onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
                   />
                 </div>
-                {form.tipo === "receber" ? (
+                {form.tipo === "receber" && (
                   <div>
                     <Label>Cliente</Label>
                     <Select
-                      value={form.clienteId}
-                      onValueChange={(v) => setForm({ ...form, clienteId: v })}
+                      value={form.customerId}
+                      onValueChange={(v) => setForm({ ...form, customerId: v })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        {clientes.map((c) => (
+                        {customers.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
-                            {c.nome}
+                            {c.legalName}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                ) : (
-                  <div>
-                    <Label>Fornecedor</Label>
-                    <Input
-                      value={form.fornecedor}
-                      onChange={(e) => setForm({ ...form, fornecedor: e.target.value })}
-                    />
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
@@ -215,16 +174,16 @@ function Financeiro() {
                     <Label>Valor</Label>
                     <Input
                       type="number"
-                      value={form.valor}
-                      onChange={(e) => setForm({ ...form, valor: e.target.value })}
+                      value={form.amount}
+                      onChange={(e) => setForm({ ...form, amount: e.target.value })}
                     />
                   </div>
                   <div>
                     <Label>Vencimento</Label>
                     <Input
                       type="date"
-                      value={form.vencimento}
-                      onChange={(e) => setForm({ ...form, vencimento: e.target.value })}
+                      value={form.dueDate}
+                      onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                     />
                   </div>
                 </div>
@@ -262,57 +221,60 @@ function Financeiro() {
         <Kpi label="Saldo previsto 30d" value={formatBRL(saldoPrev)} icon={Wallet} />
       </div>
 
-      <Tabs defaultValue="receber">
-        <TabsList>
-          <TabsTrigger value="receber">A receber ({receber.length})</TabsTrigger>
-          <TabsTrigger value="pagar">A pagar ({pagar.length})</TabsTrigger>
-          <TabsTrigger value="fluxo">Fluxo de caixa</TabsTrigger>
-        </TabsList>
-        <TabsContent value="receber">
-          <LancamentosTable
-            items={receber}
-            clientes={clientes}
-            visual={visual}
-            estornar={estornar}
-            onAcao={(l) => {
-              registrarRecebimento(l.id);
-              toast.success("Recebimento registrado.");
-            }}
-            acaoLabel="Registrar recebimento"
-            AcaoIcone={HandCoins}
-          />
-        </TabsContent>
-        <TabsContent value="pagar">
-          <LancamentosTable
-            items={pagar}
-            clientes={clientes}
-            visual={visual}
-            estornar={estornar}
-            onAcao={(l) => {
-              pagarLancamento(l.id);
-              toast.success("Pagamento registrado.");
-            }}
-            acaoLabel="Pagar"
-            AcaoIcone={CheckCircle2}
-            mostrarFornecedor
-          />
-        </TabsContent>
-        <TabsContent value="fluxo">
-          <FluxoCaixa lancs={lancs} />
-        </TabsContent>
-      </Tabs>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <Tabs defaultValue="receber">
+          <TabsList>
+            <TabsTrigger value="receber">A receber ({receivables.length})</TabsTrigger>
+            <TabsTrigger value="pagar">A pagar ({payables.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="receber">
+            <LancamentosTable
+              items={receivables}
+              customers={customers}
+              onAction={async (l) => {
+                try {
+                  await receivePayment.mutateAsync({ id: l.id, amount: l.openAmount });
+                  toast.success("Recebimento registrado.");
+                } catch (err) {
+                  toast.error("Erro ao registrar.");
+                }
+              }}
+              actionLabel="Registrar recebimento"
+              ActionIcon={HandCoins}
+              isPending={receivePayment.isPending}
+            />
+          </TabsContent>
+          <TabsContent value="pagar">
+            <LancamentosTable
+              items={payables}
+              customers={[]}
+              onAction={() => toast.info("Pagamento em breve")}
+              actionLabel="Pagar"
+              ActionIcon={CheckCircle2}
+              showSupplier
+            />
+          </TabsContent>
+        </Tabs>
+      )}
     </PageContainer>
   );
 }
 
-type KpiProps = {
+function Kpi({
+  label,
+  value,
+  icon: Icon,
+  accent,
+}: {
   label: string;
   value: string;
   icon: LucideIcon;
   accent?: string;
-};
-
-function Kpi({ label, value, icon: Icon, accent }: KpiProps) {
+}) {
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between">
@@ -332,34 +294,30 @@ function Kpi({ label, value, icon: Icon, accent }: KpiProps) {
   );
 }
 
-type LancamentosTableProps = {
-  items: Lancamento[];
-  clientes: Cliente[];
-  visual: Record<string, LancamentoStatusVisual>;
-  estornar: (id: string) => void;
-  onAcao: (l: Lancamento) => void;
-  acaoLabel: string;
-  AcaoIcone: LucideIcon;
-  mostrarFornecedor?: boolean;
-};
-
-function LancamentosTable({
+function LancamentosTable<T extends Receivable | Payable>({
   items,
-  clientes,
-  visual,
-  estornar,
-  onAcao,
-  acaoLabel,
-  AcaoIcone,
-  mostrarFornecedor,
-}: LancamentosTableProps) {
+  customers,
+  onAction,
+  actionLabel,
+  ActionIcon,
+  showSupplier,
+  isPending,
+}: {
+  items: T[];
+  customers: Customer[];
+  onAction: (l: T) => void;
+  actionLabel: string;
+  ActionIcon: LucideIcon;
+  showSupplier?: boolean;
+  isPending?: boolean;
+}) {
   return (
     <Card className="p-3 md:p-4">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Descrição</TableHead>
-            <TableHead>{mostrarFornecedor ? "Fornecedor" : "Cliente"}</TableHead>
+            <TableHead>{showSupplier ? "Fornecedor" : "Cliente"}</TableHead>
             <TableHead>Vencimento</TableHead>
             <TableHead>Valor</TableHead>
             <TableHead>Status</TableHead>
@@ -367,44 +325,54 @@ function LancamentosTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((l) => {
-            const st = visual[l.id] ?? l.status;
-            return (
+          {items.map((l) => (
             <TableRow key={l.id}>
-              <TableCell className="font-medium">{l.descricao}</TableCell>
+              <TableCell className="font-medium">{l.description}</TableCell>
               <TableCell className="text-muted-foreground">
-                {mostrarFornecedor
-                  ? (l.fornecedor ?? "—")
-                  : (clientes.find((c) => c.id === l.clienteId)?.nome ?? "—")}
+                {showSupplier
+                  ? "supplierId" in l
+                    ? (l.supplierId ?? "—")
+                    : "—"
+                  : "customerId" in l
+                    ? (customers.find((c) => c.id === l.customerId)?.legalName ?? "—")
+                    : "—"}
               </TableCell>
-              <TableCell className="text-muted-foreground">{formatDate(l.vencimento)}</TableCell>
+              <TableCell className="text-muted-foreground">{formatDate(l.dueDate)}</TableCell>
               <TableCell className="font-semibold">
-                {formatBRL(l.valor)}
-                {l.valorPago ? (
+                {formatBRL(l.amount)}
+                {l.openAmount < l.amount ? (
                   <span className="block text-[10px] font-normal text-muted-foreground">
-                    Pago: {formatBRL(l.valorPago)}
+                    Aberto: {formatBRL(l.openAmount)}
                   </span>
                 ) : null}
               </TableCell>
               <TableCell>
-                <Badge variant={statusVariant(st)}>{statusLabel[st]}</Badge>
+                <Badge variant={statusVariant(l.status)}>{statusLabel[l.status]}</Badge>
               </TableCell>
               <TableCell className="text-right">
-                {l.status !== "pago" ? (
-                  <Button size="sm" variant="outline" onClick={() => onAcao(l)}>
-                    <AcaoIcone className="h-3 w-3 mr-1" />
-                    {acaoLabel}
+                {l.status !== "paid" ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onAction(l)}
+                    disabled={isPending}
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : (
+                      <ActionIcon className="h-3 w-3 mr-1" />
+                    )}
+                    {actionLabel}
                   </Button>
                 ) : (
-                  <Button size="sm" variant="ghost" onClick={() => estornar(l.id)}>
+                  <Button size="sm" variant="ghost">
                     <RotateCcw className="h-3 w-3 mr-1" />
                     Estornar
                   </Button>
                 )}
               </TableCell>
             </TableRow>
-            );
-          })}
+          ))}
           {!items.length && (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
@@ -414,67 +382,6 @@ function LancamentosTable({
           )}
         </TableBody>
       </Table>
-    </Card>
-  );
-}
-
-function FluxoCaixa({ lancs }: { lancs: Lancamento[] }) {
-  // agrupa por mês
-  const buckets: Record<string, { rec: number; pag: number }> = {};
-  for (let i = -1; i <= 5; i++) {
-    const d = new Date();
-    d.setMonth(d.getMonth() + i);
-    buckets[d.toISOString().slice(0, 7)] = { rec: 0, pag: 0 };
-  }
-  for (const l of lancs) {
-    if (l.status === "cancelado") continue;
-    const k = l.vencimento.slice(0, 7);
-    if (!buckets[k]) continue;
-    if (l.tipo === "receber") buckets[k].rec += l.valor;
-    else buckets[k].pag += l.valor;
-  }
-  const keys = Object.keys(buckets).sort();
-  const max = Math.max(1, ...keys.map((k) => Math.max(buckets[k].rec, buckets[k].pag)));
-
-  return (
-    <Card className="p-5">
-      <div className="grid grid-cols-7 gap-2">
-        {keys.map((k) => {
-          const b = buckets[k];
-          const [y, m] = k.split("-");
-          const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("pt-BR", {
-            month: "short",
-          });
-          return (
-            <div key={k} className="text-center">
-              <div className="h-32 flex items-end justify-center gap-1">
-                <div
-                  className="w-3 bg-success rounded-t"
-                  style={{ height: `${(b.rec / max) * 100}%` }}
-                  title={`Receber ${formatBRL(b.rec)}`}
-                />
-                <div
-                  className="w-3 bg-destructive rounded-t"
-                  style={{ height: `${(b.pag / max) * 100}%` }}
-                  title={`Pagar ${formatBRL(b.pag)}`}
-                />
-              </div>
-              <p className="text-[10px] mt-1 uppercase">{label}</p>
-              <p className="text-[10px] font-semibold">{formatBRL(b.rec - b.pag)}</p>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex gap-4 mt-4 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2 w-2 rounded bg-success" />
-          Receber
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2 w-2 rounded bg-destructive" />
-          Pagar
-        </span>
-      </div>
     </Card>
   );
 }

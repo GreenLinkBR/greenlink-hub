@@ -29,9 +29,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatDate } from "@/lib/mock/store";
-import type { LeadOrigem, LeadStatus } from "@/lib/mock/types";
-import { Plus, ArrowRight } from "lucide-react";
+import { useLeads, useCreateLead, useUpdateLead, useConvertLead } from "@/hooks/domain";
+import { formatDate } from "@/lib/mock/store";
+import type { LeadStatus } from "@/types/lead";
+import { Plus, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/leads")({
@@ -43,13 +44,17 @@ const statusColor: Record<LeadStatus, string> = {
   novo: "bg-primary/15 text-primary",
   contatado: "bg-warning/15 text-warning-foreground",
   qualificado: "bg-success/15 text-success",
-  descartado: "bg-muted text-muted-foreground",
+  perdido: "bg-destructive/15 text-destructive",
+  convertido: "bg-muted text-muted-foreground",
 };
 
 function LeadsPage() {
-  const { leads, addLead, converterLead, updateLead } = useAppStore();
+  const { data: leads = [], isLoading } = useLeads();
+  const createLead = useCreateLead();
+  const updateLead = useUpdateLead();
+  const convertLead = useConvertLead();
   const [open, setOpen] = useState(false);
-  const [origem, setOrigem] = useState<LeadOrigem>("site");
+  const [source, setSource] = useState("site");
 
   return (
     <PageContainer>
@@ -70,18 +75,22 @@ function LeadsPage() {
               </DialogHeader>
               <form
                 className="space-y-3"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   const fd = new FormData(e.currentTarget);
-                  addLead({
-                    nome: String(fd.get("nome")),
-                    empresa: String(fd.get("empresa") || "") || undefined,
-                    email: String(fd.get("email") || "") || undefined,
-                    telefone: String(fd.get("telefone") || "") || undefined,
-                    origem,
-                  });
-                  toast.success("Lead adicionado");
-                  setOpen(false);
+                  try {
+                    await createLead.mutateAsync({
+                      name: String(fd.get("nome")),
+                      companyName: String(fd.get("empresa") || "") || undefined,
+                      email: String(fd.get("email") || "") || undefined,
+                      phone: String(fd.get("telefone") || "") || undefined,
+                      source,
+                    });
+                    toast.success("Lead adicionado");
+                    setOpen(false);
+                  } catch (err) {
+                    toast.error("Erro ao adicionar lead");
+                  }
                 }}
               >
                 <div className="space-y-1.5">
@@ -104,7 +113,7 @@ function LeadsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Origem</Label>
-                  <Select value={origem} onValueChange={(v) => setOrigem(v as LeadOrigem)}>
+                  <Select value={source} onValueChange={setSource}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -118,7 +127,10 @@ function LeadsPage() {
                   </Select>
                 </div>
                 <DialogFooter>
-                  <Button type="submit">Adicionar</Button>
+                  <Button type="submit" disabled={createLead.isPending}>
+                    {createLead.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                    Adicionar
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -127,96 +139,109 @@ function LeadsPage() {
       />
 
       <Card className="p-3 md:p-4">
-        <div className="md:hidden space-y-2">
-          {leads.map((l) => (
-            <div key={l.id} className="rounded-lg border p-3">
-              <div className="flex items-center justify-between">
-                <p className="font-medium">{l.nome}</p>
-                <Badge className={statusColor[l.status]} variant="secondary">
-                  {l.status}
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {l.empresa ?? "—"} · {l.origem}
-              </p>
-              <div className="flex gap-2 mt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => updateLead(l.id, { status: "contatado" })}
-                >
-                  Contatado
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    const r = converterLead(l.id);
-                    if (r) toast.success("Lead convertido em cliente");
-                  }}
-                >
-                  Converter <ArrowRight className="h-3 w-3 ml-1" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="hidden md:block">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Origem</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            <div className="md:hidden space-y-2">
               {leads.map((l) => (
-                <TableRow key={l.id}>
-                  <TableCell className="font-medium">{l.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">{l.empresa ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {l.email ?? l.telefone ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-[10px]">
-                      {l.origem}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
+                <div key={l.id} className="rounded-lg border p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">{l.name}</p>
                     <Badge className={statusColor[l.status]} variant="secondary">
                       {l.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(l.criadoEm)}</TableCell>
-                  <TableCell className="text-right">
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {l.companyName ?? "—"} · {l.source}
+                  </p>
+                  <div className="flex gap-2 mt-2">
                     <Button
                       size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        const r = converterLead(l.id);
-                        if (r) toast.success("Convertido em cliente");
-                      }}
+                      variant="outline"
+                      onClick={() => updateLead.mutate({ id: l.id, data: { status: "contatado" } })}
+                      disabled={updateLead.isPending}
                     >
-                      Converter
+                      Contatado
                     </Button>
-                  </TableCell>
-                </TableRow>
+                    <Button
+                      size="sm"
+                      onClick={() => convertLead.mutate({ id: l.id })}
+                      disabled={convertLead.isPending}
+                    >
+                      Converter <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
               ))}
-              {!leads.length && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    Nenhum lead.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+            </div>
+
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Empresa</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Origem</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leads.map((l) => (
+                    <TableRow key={l.id}>
+                      <TableCell className="font-medium">{l.name}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {l.companyName ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {l.email ?? l.phone ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">
+                          {l.source}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusColor[l.status]} variant="secondary">
+                          {l.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(l.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => convertLead.mutate({ id: l.id })}
+                          disabled={convertLead.isPending}
+                        >
+                          {convertLead.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Converter"
+                          )}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!leads.length && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        Nenhum lead.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
       </Card>
     </PageContainer>
   );

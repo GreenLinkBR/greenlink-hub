@@ -108,13 +108,7 @@ export interface Pedido {
   clienteId: ID;
   total: number;
   criadoEm: string;
-  status:
-    | "aberto"
-    | "aprovado"
-    | "faturado"
-    | "parcialmente_atendido"
-    | "atendido"
-    | "cancelado";
+  status: "aberto" | "aprovado" | "faturado" | "parcialmente_atendido" | "atendido" | "cancelado";
   itens?: OrcamentoItem[];
 }
 
@@ -138,18 +132,8 @@ export const ORCAMENTO_STATUS: { id: OrcamentoStatus; label: string }[] = [
 // ---------- Contratos ----------
 export type ContratoStatus = "ativo" | "suspenso" | "encerrado";
 export type ContratoIndexador = "ipca" | "igpm" | "fixo";
-export type ContratoTipo =
-  | "venda_instalacao"
-  | "locacao"
-  | "assinatura"
-  | "suporte"
-  | "misto";
-export type ContratoFrequencia =
-  | "unica"
-  | "mensal"
-  | "trimestral"
-  | "semestral"
-  | "anual";
+export type ContratoTipo = "venda_instalacao" | "locacao" | "assinatura" | "suporte" | "misto";
+export type ContratoFrequencia = "unica" | "mensal" | "trimestral" | "semestral" | "anual";
 
 export const CONTRATO_TIPO_LABEL: Record<ContratoTipo, string> = {
   venda_instalacao: "Venda + instalação",

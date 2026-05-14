@@ -316,10 +316,7 @@ function ClienteDetalhe() {
         <TabsContent value="financeiro">
           <Card className="p-5 space-y-2">
             {lcts.map((l) => (
-              <div
-                key={l.id}
-                className="flex items-center justify-between rounded-md border p-3"
-              >
+              <div key={l.id} className="flex items-center justify-between rounded-md border p-3">
                 <div>
                   <p className="font-medium">{l.descricao}</p>
                   <p className="text-xs text-muted-foreground">

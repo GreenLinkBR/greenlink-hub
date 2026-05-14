@@ -775,21 +775,15 @@ export const useAppStore = create<State>()(
         set((s) => ({ orcamentos: s.orcamentos.filter((o) => o.id !== id) })),
       enviarOrcamento: (id) =>
         set((s) => ({
-          orcamentos: s.orcamentos.map((o) =>
-            o.id === id ? { ...o, status: "enviado" } : o,
-          ),
+          orcamentos: s.orcamentos.map((o) => (o.id === id ? { ...o, status: "enviado" } : o)),
         })),
       aprovarOrcamento: (id) =>
         set((s) => ({
-          orcamentos: s.orcamentos.map((o) =>
-            o.id === id ? { ...o, status: "aprovado" } : o,
-          ),
+          orcamentos: s.orcamentos.map((o) => (o.id === id ? { ...o, status: "aprovado" } : o)),
         })),
       recusarOrcamento: (id) =>
         set((s) => ({
-          orcamentos: s.orcamentos.map((o) =>
-            o.id === id ? { ...o, status: "recusado" } : o,
-          ),
+          orcamentos: s.orcamentos.map((o) => (o.id === id ? { ...o, status: "recusado" } : o)),
         })),
       gerarPedidoDeOrcamento: (id) => {
         const orc = get().orcamentos.find((o) => o.id === id);
@@ -821,9 +815,7 @@ export const useAppStore = create<State>()(
         };
         set((s) => ({
           pedidos: [pedido, ...s.pedidos],
-          orcamentos: s.orcamentos.map((o) =>
-            o.id === id ? { ...o, pedidoId: pedido.id } : o,
-          ),
+          orcamentos: s.orcamentos.map((o) => (o.id === id ? { ...o, pedidoId: pedido.id } : o)),
           lancamentos: [lanc, ...s.lancamentos],
         }));
         return pedido;
@@ -949,9 +941,7 @@ export const useAppStore = create<State>()(
       estornar: (id) =>
         set((s) => ({
           lancamentos: s.lancamentos.map((l) =>
-            l.id === id
-              ? { ...l, status: "aberto", pagoEm: undefined, valorPago: undefined }
-              : l,
+            l.id === id ? { ...l, status: "aberto", pagoEm: undefined, valorPago: undefined } : l,
           ),
         })),
       removeLancamento: (id) =>
