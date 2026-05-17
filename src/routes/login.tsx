@@ -56,7 +56,7 @@ function LoginPage() {
   return (
     <div className="min-h-screen grid md:grid-cols-2">
       <div className="hidden md:flex flex-col justify-between p-10 bg-gradient-to-br from-primary to-primary-glow text-primary-foreground">
-        <img src={logoFull} alt="GreenLink" className="h-10 w-auto brightness-0 invert" />
+        <img src={logoFull} alt="GreenLink" className="h-10 w-auto max-w-full object-contain brightness-0 invert" />
         <div>
           <h2 className="text-4xl font-bold leading-tight">
             A operação inteira da GreenLink, em um só lugar.
@@ -69,7 +69,7 @@ function LoginPage() {
       </div>
       <div className="flex items-center justify-center p-6">
         <Card className="w-full max-w-sm p-6">
-          <img src={logoFull} alt="GreenLink" className="h-8 mb-6 md:hidden" />
+          <img src={logoFull} alt="GreenLink" className="h-8 w-auto max-w-full object-contain mb-6 md:hidden" />
           <h1 className="text-2xl font-bold">Entrar</h1>
           <p className="text-sm text-muted-foreground mt-1">Acesse o painel administrativo.</p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>

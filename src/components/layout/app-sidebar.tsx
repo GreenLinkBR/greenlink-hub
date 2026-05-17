@@ -31,7 +31,7 @@ export function AppSidebar() {
           {collapsed ? (
             <img src={logoMark} alt="GreenLink" className="h-7 w-7" />
           ) : (
-            <img src={logoFull} alt="GreenLink" className="h-8 w-auto" />
+            <img src={logoFull} alt="GreenLink" className="h-8 w-auto max-w-full object-contain" />
           )}
         </div>
       </SidebarHeader>
