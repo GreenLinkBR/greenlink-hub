@@ -9,13 +9,13 @@ type PayableRow = Database["public"]["Tables"]["payables"]["Row"];
 type PayableInsert = Database["public"]["Tables"]["payables"]["Insert"];
 
 const toBillingStatus = (
-  status: Exclude<BillingStatus, "overdue">,
+  status: BillingStatus,
   dueDateIso: string,
 ): BillingStatus => {
   const base = status;
-  const isOpen = base === "open" || base === "partial";
+  const isOpen = base === "open" || base === "partial" || base === "overdue";
   const isOverdue = isOpen && new Date(dueDateIso).getTime() < Date.now();
-  return isOverdue ? "overdue" : base;
+  return isOverdue ? "overdue" : base === "overdue" ? "open" : base;
 };
 
 const mapReceivable = (row: ReceivableRow): Receivable => ({
