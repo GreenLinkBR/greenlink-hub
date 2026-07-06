@@ -74,7 +74,17 @@ describe("buildGlobalSearchIndex", () => {
   it("cria itens com targets esperados", () => {
     const index = buildGlobalSearchIndex({
       clientes: [
-        { id: "c1", tipo: "pj", nome: "Agro", contatos: [], criadoEm: new Date().toISOString() },
+        {
+          id: "c1",
+          legalName: "Agro",
+          documentNumber: "",
+          documentType: "cnpj",
+          contacts: [],
+          addresses: [],
+          status: "active",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as any,
       ],
       leads: [],
       oportunidades: [],
@@ -82,7 +92,16 @@ describe("buildGlobalSearchIndex", () => {
       pedidos: [],
       contratos: [],
       ordens: [],
-      ativos: [{ id: "a1", tag: "GTW-1", modelo: "Gateway", tipo: "Gateway", status: "ativo" }],
+      ativos: [
+        {
+          id: "a1",
+          assetTag: "GTW-1",
+          ownerType: "greenlink",
+          status: "available",
+          createdAt: "",
+          updatedAt: "",
+        } as any,
+      ],
       tickets: [],
       catalogo: [],
     });

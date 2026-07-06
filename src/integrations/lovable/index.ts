@@ -8,7 +8,7 @@ type SignInOptions = {
 export const lovable = {
   auth: {
     signInWithOAuth: async (
-      provider: "google" | "apple" | "microsoft" | "github" | "facebook",
+      provider: "google" | "apple" | "azure" | "github" | "facebook",
       opts?: SignInOptions,
     ) => {
       const { data, error } = await supabase.auth.signInWithOAuth({

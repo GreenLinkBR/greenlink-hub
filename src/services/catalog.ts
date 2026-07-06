@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { CatalogItem } from "@/types/catalog";
+import { CatalogItem, CatalogItemType } from "@/types/catalog";
 
 type CatalogRow = Database["public"]["Tables"]["catalog_items"]["Row"];
 type CatalogInsert = Database["public"]["Tables"]["catalog_items"]["Insert"];

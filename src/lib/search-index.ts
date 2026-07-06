@@ -1,15 +1,13 @@
-import type {
-  Customer,
-  Lead,
-  Opportunity,
-  Quote,
-  CustomerOrder,
-  Contract,
-  ServiceOrder,
-  Asset,
-  SupportTicket,
-  CatalogItem,
-} from "@/types";
+import type { Customer } from "@/types/customer";
+import type { Lead } from "@/types/lead";
+import type { Opportunity } from "@/types/opportunity";
+import type { Quote, QuoteItem } from "@/types/quote";
+import type { CustomerOrder } from "@/types/order";
+import type { Contract } from "@/types/contract";
+import type { ServiceOrder } from "@/types/serviceOrder";
+import type { Asset } from "@/types/asset";
+import type { SupportTicket } from "@/types/ticket";
+import type { CatalogItem } from "@/types/catalog";
 import type { GlobalSearchItem } from "@/lib/search";
 
 export function buildGlobalSearchIndex(input: {
@@ -69,7 +67,7 @@ export function buildGlobalSearchIndex(input: {
       id: o.id,
       title: o.quoteNumber,
       subtitle: [clienteNome.get(o.customerId) ?? "—", o.status].filter(Boolean).join(" · "),
-      keywords: o.items.flatMap((i) => [i.itemDescription]),
+      keywords: o.items.flatMap((i: QuoteItem) => [i.itemDescription]),
       target: { to: "/orcamentos/$id", params: { id: o.id } },
     });
   }
@@ -90,7 +88,7 @@ export function buildGlobalSearchIndex(input: {
       id: c.id,
       title: c.contractNumber,
       subtitle: [clienteNome.get(c.customerId) ?? "—", c.status].filter(Boolean).join(" · "),
-      keywords: [c.priceIndexer, String(c.monthlyAmount)].filter(Boolean),
+      keywords: [c.priceIndexer, String(c.monthlyAmount)].filter(Boolean) as string[],
       target: { to: "/contratos/$id", params: { id: c.id } },
     });
   }

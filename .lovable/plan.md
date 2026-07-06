@@ -1,95 +1,67 @@
-# Plano — Banco real, Auth e remoção total de mocks
+# Plano — GreenLink v2: Starlink, UI e OCR
 
-## Estado atual
+Estender o schema atual (sem remover nada) para o domínio Starlink e entregar as UIs novas + wizard de cadastro com OCR. Dividido em 3 entregas sequenciais para validar cada uma antes de seguir.
 
-- Schema Postgres (Supabase) já criado em sprint anterior: 22 tabelas (`profiles`, `user_roles`, `customers`, `customer_contacts`, `customer_addresses`, `leads`, `opportunities`, `catalog_items`, `quotes`, `quote_items`, `customer_orders`, `order_items`, `contracts`, `contract_items`, `assets`, `service_orders`, `service_order_tasks`, `support_tickets`, `ticket_messages`, `stock_balances`, `stock_movements`, `receivables`, `payables`).
-- RLS habilitado em todas as tabelas (leitura para autenticados, mutações para `admin/manager`). `has_role()`, `is_staff()`, `handle_new_user()` em vigor.
-- Cliente Supabase (browser/admin/middleware) gerado. Auth não está integrada na UI: `/login` faz `navigate("/dashboard")` sem credenciais.
-- Todos os 12 services em `src/services/*` ainda chamam `useAppStore.getState()` (mock localStorage).
-- `__root.tsx` não tem `_authenticated` layout nem listener `onAuthStateChange`.
+## Entrega 1 — Schema Starlink (migração única)
 
-## Escopo desta entrega
+Novas tabelas em `public` (com GRANTs, RLS via `is_staff()` / `has_role('admin')`, triggers `touch_updated_at`):
 
-### 1. Modelo de dados (gaps a corrigir)
+- **equipment** — `customer_id` → customers, `model`, `serial_number` (UNIQUE), `kit_id` (UNIQUE), `dish_model`, `pn`, `power_source`, `warranty_until`, `installed_at`, `status` (`in_stock|installed|maintenance|retired`), `notes`.
+- **starlink_accounts** — `gl_code` (UNIQUE, gerado por sequência `GL-001`), `customer_id`, `equipment_id`, `gmail_alias` (UNIQUE, `greennetantenas+N@gmail.com`), `is_primary_account`, `plan`, `status`, `activated_at`, `customer_has_access` bool, `recovery_email`, `recovery_phone`, `notes`.
+- **installations** — `customer_id`, `equipment_id`, `technician_id` (→ profiles), `scheduled_at`, `executed_at`, `checklist` jsonb, `photos_before` jsonb, `photos_after` jsonb, `signature_url`, `gps_lat`, `gps_lng`, `status` (`scheduled|in_progress|done|cancelled`), `notes`.
+- **customer_documents** — `customer_id`, `doc_type` (`cnh|energy_bill|starlink_label|other`), `file_url`, `ocr_data` jsonb, `uploaded_by`, `uploaded_at`.
+- **technicians_view** (VIEW) — agrega KPIs por técnico (instalações realizadas, tempo médio, avaliação futura).
+- Sequência + função `next_gl_code()` e `next_gmail_alias()` (SECURITY DEFINER).
 
-A maioria das relações já existe via colunas `*_id`, mas faltam **foreign keys explícitas** (tabela "No foreign keys" em todas). Migration única adicionando FKs para integridade referencial:
+Extensões em tabelas existentes:
 
-- `customer_contacts.customer_id`, `customer_addresses.customer_id` → `customers(id) ON DELETE CASCADE`
-- `opportunities.customer_id`, `opportunities.lead_id` → respectivas (`SET NULL`)
-- `quotes.customer_id`, `quotes.opportunity_id`, `quote_items.quote_id`, `quote_items.catalog_item_id`
-- `customer_orders.customer_id`, `customer_orders.quote_id`, `order_items.order_id`, `order_items.catalog_item_id`
-- `contracts.customer_id`, `contracts.order_id`, `contract_items.contract_id`, `contract_items.catalog_item_id`
-- `assets.customer_id`, `assets.contract_id`, `assets.catalog_item_id`, `assets.address_id`
-- `service_orders.customer_id`, `.contract_id`, `.asset_id`, `.order_id`, `.ticket_id`
-- `service_order_tasks.service_order_id` (CASCADE)
-- `support_tickets.customer_id`, `.contract_id`, `.asset_id`
-- `ticket_messages.ticket_id` (CASCADE)
-- `stock_balances.catalog_item_id` (PK composto warehouse+item), `stock_movements.catalog_item_id`
-- `receivables.customer_id`, `.contract_id`, `.order_id`; `payables.supplier_id`
-- Triggers `touch_updated_at` em todas tabelas que tem `updated_at`
-- Constraint UNIQUE em campos de número (`quote_number`, `order_number`, `contract_number`, `os_number`, `ticket_number`, `asset_tag`, `item_code`)
-- Sequências SQL para gerar números (`gen_quote_number()`, etc.) — funções SECURITY DEFINER
+- **customers**: `birth_date`, `cpf_cnpj` (UNIQUE parcial), `latitude`, `longitude`, `city`, `state`, `notes` (se faltar).
+- **profiles**: já cobre técnicos; adicionar role `technician` no enum `app_role` se necessário e usar em RLS de installations.
 
-### 2. Auth real
+Bucket de storage `customer-docs` (privado) para fotos/documentos, com policies por dono.
 
-- `src/contexts/AuthContext.tsx`: provê `user`, `session`, `profile`, `roles`, `loading`, `signIn`, `signUp`, `signOut`, `resetPassword`. Ouve `onAuthStateChange`.
-- `__root.tsx`: monta `<AuthProvider>` e listener que invalida queryClient.
-- `src/routes/login.tsx`: form real (email/senha) + tab cadastro + link "Esqueci senha".
-- `src/routes/signup.tsx`, `src/routes/reset-password.tsx`: novos.
-- `src/routes/_authenticated.tsx`: layout pathless com `beforeLoad` redirecionando para `/login` se não autenticado.
-- Mover todas as rotas autenticadas para sob `_authenticated/` (renomear: `_authenticated.dashboard.tsx` etc.) — ou usar guard simples no `RootComponent` baseado no contexto. **Decisão: usar guard no RootComponent** (menos churn de arquivos, sem mover 22 rotas).
-- Logout no header.
+## Entrega 2 — UI dos novos módulos
 
-### 3. Migração de services para Supabase
+Rotas TanStack novas em `src/routes/`:
 
-Reescrever todos os 12 services para usar `supabase.from(...)` em vez de `useAppStore`:
+- `equipamentos.tsx` + `equipamentos.$id.tsx` — lista, filtros por SN/KIT ID/status, formulário.
+- `contas-starlink.tsx` + `contas-starlink.$id.tsx` — lista com GL-code, alias, cliente, plano.
+- `instalacoes.tsx` + `instalacoes.$id.tsx` — agenda, checklist, upload fotos antes/depois, mapa GPS, assinatura (canvas).
+- `tecnicos.tsx` — ranking com KPIs.
+- `clientes.$id.tsx` — adicionar abas Equipamentos / Contas Starlink / Instalações / Documentos.
 
-- `customers.ts`, `leads.ts`, `opportunities.ts`, `catalog.ts`, `quotes.ts` (+items), `orders.ts` (+items), `contracts.ts` (+items), `assets.ts`, `serviceOrders.ts` (+tasks), `tickets.ts` (+messages), `inventory.ts` (movements + balances), `finance.ts` (receivables/payables).
-- Manter as mesmas assinaturas para não quebrar os hooks `useXxx` em `src/hooks/domain/*`.
-- Mapear nomes camelCase ↔ snake_case (Supabase retorna snake_case). Criar helpers `toCamel`/`toSnake` em `src/services/http.ts`.
+Novos services em `src/services/`: `equipment.ts`, `starlinkAccounts.ts`, `installations.ts`, `documents.ts`. Hooks em `src/hooks/domain/`.
 
-### 4. Remoção de mocks
+Busca global (`src/lib/search.ts`): indexar SN, KIT ID, GL-code, CPF, alias, cidade.
 
-- Deletar `src/lib/mock/store.ts` e `src/lib/mock/types.ts`.
-- Remover imports `useAppStore` em todas as rotas (~22 arquivos). Substituir por hooks `useXxx` já existentes ou queries Supabase diretas.
-- Atualizar componentes que usam tipos do `mock/types.ts` (`OrcamentoStatus`, etc.) para usar tipos canônicos em `src/types/*`.
-- `/configuracoes`: remover botão "limpar dados demo".
+Navegação: adicionar itens no `nav-config.ts` e sidebar.
 
-### 5. Componentes de feedback
+## Entrega 3 — Wizard "Novo Cliente" com OCR
 
-- `src/components/feedback/{LoadingState,EmptyState,ErrorState}.tsx` aplicados em listagens.
+Rota: `clientes.novo.tsx` — stepper de 5 passos.
 
-### 6. Seed mínimo (opcional, idempotente)
+1. Upload CNH → OCR → preenche nome, CPF, nascimento.
+2. Upload conta de energia → OCR → preenche endereço, cidade, CEP, geocode (lat/lng via Google Maps se conectado, senão manual).
+3. Upload etiqueta Starlink → OCR → preenche modelo, SN, KIT ID.
+4. Revisão + geração automática: próximo `GL-XXX`, próximo alias `greennetantenas+N@gmail.com`.
+5. Confirma → cria em transação: customer + document + equipment + starlink_account + installation (agendada).
 
-- Após auth funcionando, inserir 3 customers, 5 catalog_items, 2 leads via `supabase--insert` para o app não nascer vazio.
+OCR via **Lovable AI Gateway** com `google/gemini-2.5-flash` (multimodal, sem chave extra). Server function `src/lib/ocr.functions.ts` recebe `{ file_url, doc_type }`, chama gateway com schema JSON estruturado por tipo, salva `ocr_data` em `customer_documents`.
 
-### 7. Documentação
+Feedback: `LoadingState` durante OCR, campos editáveis após extração (usuário sempre pode corrigir).
 
-- `docs/DATABASE.md`: lista de tabelas + colunas + relações + RLS.
-- `docs/AUTH.md`: fluxos de signup/login/reset, papéis, RLS.
+## Detalhes técnicos
 
-### 8. Testes
+- Todas migrações seguem o padrão CREATE TABLE → GRANT (`authenticated`, `service_role`) → ENABLE RLS → CREATE POLICY. Nenhuma policy `TO anon` — sistema é interno.
+- RLS: staff (`is_staff(auth.uid())`) tem CRUD; `technician` vê apenas suas installations (`technician_id = auth.uid()`).
+- Storage: bucket `customer-docs` privado, upload via `supabase.storage`, policies apenas `authenticated` + `is_staff`.
+- OCR roda como `createServerFn` autenticada (`requireSupabaseAuth`), nunca no browser.
+- Integrações externas (n8n, WhatsApp, Drive, Calendar) ficam fora desta rodada — o schema já suporta ligá-las depois via webhooks.
 
-- `src/services/__tests__/*.test.ts` smoke tests com Supabase mockado (vitest).
-- Validação manual: criar conta, login, criar customer, ver no Postgres via `read_query`.
+## Ordem de execução
 
-## Observações
+1. Migração única com tudo de Entrega 1. **Pausa para você aprovar.**
+2. Após aprovar, aplico services + hooks + rotas da Entrega 2.
+3. Por fim, wizard + OCR da Entrega 3.
 
-- **Tamanho real:** ~40 arquivos editados/criados, ~15 deletados. É uma sprint completa.
-- **Risco:** quebrar visual das 22 rotas durante a migração. Mitigação: manter assinatura dos hooks `useXxx` idêntica.
-- **Google OAuth:** incluído por padrão (`supabase--configure_social_auth`).
-- **Auto-confirm email:** desabilitado (usuário valida email).
-- **Fora de escopo:** motor de recorrência de contratos, edge functions, dashboards executivos com agregações reais (próximas sprints).
-
-## Sequência de execução (commits lógicos)
-
-1. Migration com FKs + UNIQUE + sequências de numeração.
-2. AuthContext + login real + signup + reset-password + guard.
-3. Services Supabase (12 arquivos) + helpers camelCase.
-4. Limpeza: deletar `lib/mock/*`, remover imports `useAppStore` das 22 rotas.
-5. Componentes de feedback nas listagens principais.
-6. Seed inicial.
-7. `docs/DATABASE.md` + `docs/AUTH.md`.
-8. Smoke tests + validação via `read_query`.
-
-Confirma que sigo nessa ordem? É uma entrega grande (~1h de execução com várias migrations e edits). Posso quebrar em duas mensagens — (A) Auth + Migration de FKs + 4 services principais (Customers/Leads/Catalog/Quotes) ou (B) sprint completa de uma vez.
+Posso começar pela Entrega 1?

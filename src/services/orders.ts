@@ -38,7 +38,7 @@ const mapOrder = (row: OrderWithRelations): CustomerOrder => ({
 });
 
 export const orderService = {
-  list: async (): Promise<Order[]> => {
+  list: async (): Promise<CustomerOrder[]> => {
     const { data, error } = await supabase
       .from("customer_orders")
       .select("*, order_items!fk_oi_order(*)")
@@ -47,7 +47,7 @@ export const orderService = {
     return (data ?? []).map((row) => mapOrder(row as unknown as OrderWithRelations));
   },
 
-  get: async (id: string): Promise<Order | undefined> => {
+  get: async (id: string): Promise<CustomerOrder | undefined> => {
     const { data, error } = await supabase
       .from("customer_orders")
       .select("*, order_items!fk_oi_order(*)")

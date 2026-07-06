@@ -112,7 +112,7 @@ function AtivosPage() {
     <PageContainer>
       <PageHeader
         title="Ativos"
-        description={`${ativos.length} equipamentos · ${ativos.filter((a) => a.status === "ativo").length} ativos`}
+        description={`${ativos.length} equipamentos · ${ativos.filter((a) => a.status === "available" || a.status === "installed" || a.status === "rented").length} ativos`}
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>

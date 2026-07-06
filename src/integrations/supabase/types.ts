@@ -447,6 +447,64 @@ export type Database = {
           },
         ]
       }
+      customer_documents: {
+        Row: {
+          created_at: string
+          customer_id: string
+          doc_type: string
+          file_url: string
+          id: string
+          ocr_data: Json | null
+          updated_at: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          doc_type: string
+          file_url: string
+          id?: string
+          ocr_data?: Json | null
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          doc_type?: string
+          file_url?: string
+          id?: string
+          ocr_data?: Json | null
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "technicians_stats"
+            referencedColumns: ["technician_id"]
+          },
+        ]
+      }
       customer_orders: {
         Row: {
           created_at: string
@@ -526,14 +584,18 @@ export type Database = {
       }
       customers: {
         Row: {
+          birth_date: string | null
           city: string | null
+          cpf_cnpj: string | null
           created_at: string
           created_by: string | null
           customer_type: Database["public"]["Enums"]["customer_type"]
           document_number: string | null
           email: string | null
           id: string
+          latitude: number | null
           legal_name: string
+          longitude: number | null
           notes: string | null
           phone: string | null
           state: string | null
@@ -542,14 +604,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          birth_date?: string | null
           city?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           created_by?: string | null
           customer_type?: Database["public"]["Enums"]["customer_type"]
           document_number?: string | null
           email?: string | null
           id?: string
+          latitude?: number | null
           legal_name: string
+          longitude?: number | null
           notes?: string | null
           phone?: string | null
           state?: string | null
@@ -558,14 +624,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          birth_date?: string | null
           city?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           created_by?: string | null
           customer_type?: Database["public"]["Enums"]["customer_type"]
           document_number?: string | null
           email?: string | null
           id?: string
+          latitude?: number | null
           legal_name?: string
+          longitude?: number | null
           notes?: string | null
           phone?: string | null
           state?: string | null
@@ -574,6 +644,151 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      equipment: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          dish_model: string | null
+          id: string
+          installed_at: string | null
+          kit_id: string | null
+          model: string | null
+          notes: string | null
+          pn: string | null
+          power_source: string | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+          warranty_until: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          dish_model?: string | null
+          id?: string
+          installed_at?: string | null
+          kit_id?: string | null
+          model?: string | null
+          notes?: string | null
+          pn?: string | null
+          power_source?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          warranty_until?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          dish_model?: string | null
+          id?: string
+          installed_at?: string | null
+          kit_id?: string | null
+          model?: string | null
+          notes?: string | null
+          pn?: string | null
+          power_source?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          warranty_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      installations: {
+        Row: {
+          checklist: Json
+          created_at: string
+          customer_id: string
+          equipment_id: string | null
+          executed_at: string | null
+          gps_lat: number | null
+          gps_lng: number | null
+          id: string
+          notes: string | null
+          photos_after: Json
+          photos_before: Json
+          scheduled_at: string | null
+          signature_url: string | null
+          status: string
+          technician_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          checklist?: Json
+          created_at?: string
+          customer_id: string
+          equipment_id?: string | null
+          executed_at?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          notes?: string | null
+          photos_after?: Json
+          photos_before?: Json
+          scheduled_at?: string | null
+          signature_url?: string | null
+          status?: string
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          checklist?: Json
+          created_at?: string
+          customer_id?: string
+          equipment_id?: string | null
+          executed_at?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          notes?: string | null
+          photos_after?: Json
+          photos_before?: Json
+          scheduled_at?: string | null
+          signature_url?: string | null
+          status?: string
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "installations_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "installations_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "installations_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "technicians_stats"
+            referencedColumns: ["technician_id"]
+          },
+        ]
       }
       leads: {
         Row: {
@@ -1278,6 +1493,75 @@ export type Database = {
           },
         ]
       }
+      starlink_accounts: {
+        Row: {
+          activated_at: string | null
+          created_at: string
+          customer_has_access: boolean
+          customer_id: string | null
+          equipment_id: string | null
+          gl_code: string
+          gmail_alias: string
+          id: string
+          is_primary_account: boolean
+          notes: string | null
+          plan: string | null
+          recovery_email: string | null
+          recovery_phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string
+          customer_has_access?: boolean
+          customer_id?: string | null
+          equipment_id?: string | null
+          gl_code?: string
+          gmail_alias?: string
+          id?: string
+          is_primary_account?: boolean
+          notes?: string | null
+          plan?: string | null
+          recovery_email?: string | null
+          recovery_phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string
+          customer_has_access?: boolean
+          customer_id?: string | null
+          equipment_id?: string | null
+          gl_code?: string
+          gmail_alias?: string
+          id?: string
+          is_primary_account?: boolean
+          notes?: string | null
+          plan?: string | null
+          recovery_email?: string | null
+          recovery_phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "starlink_accounts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "starlink_accounts_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_balances: {
         Row: {
           catalog_item_id: string
@@ -1545,7 +1829,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      technicians_stats: {
+        Row: {
+          avg_hours_to_execute: number | null
+          email: string | null
+          full_name: string | null
+          installations_done: number | null
+          installations_scheduled: number | null
+          technician_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
@@ -1560,6 +1854,8 @@ export type Database = {
         Args: { prefix: string; seq_name: string }
         Returns: string
       }
+      next_gl_code: { Args: never; Returns: string }
+      next_gmail_alias: { Args: never; Returns: string }
     }
     Enums: {
       app_role: "admin" | "manager" | "operator" | "viewer"
