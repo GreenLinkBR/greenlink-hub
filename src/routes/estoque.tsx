@@ -39,6 +39,7 @@ import {
   useUpdateMinimumStock,
 } from "@/hooks/domain";
 import type { StockMovementType } from "@/types/inventory";
+import type { StockMovement } from "@/types/inventory";
 import { Plus, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -94,9 +95,9 @@ function EstoquePage() {
         catalogItemId: form.itemId,
         movementType: form.tipo,
         quantity: qty,
-        notes: form.motivo || null,
-        referenceType: form.osId ? "service_order" : null,
-        referenceId: form.osId || null,
+        notes: form.motivo || undefined,
+        referenceType: form.osId ? "service_order" : undefined,
+        referenceId: form.osId || undefined,
       });
       toast.success("Movimentação registrada.");
       setOpen(false);

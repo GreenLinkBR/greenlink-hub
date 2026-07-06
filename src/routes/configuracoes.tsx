@@ -242,7 +242,7 @@ function Config() {
   };
 
   const loadProfile = (profile: SettingsProfile) => {
-    setSettings(profile.settings as SettingsState);
+    setSettings(profile.settings as unknown as SettingsState);
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(profile.settings));
     if (profile.settings.theme === "dark") {
       document.documentElement.classList.add("dark");

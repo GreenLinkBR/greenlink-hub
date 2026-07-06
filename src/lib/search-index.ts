@@ -88,7 +88,7 @@ export function buildGlobalSearchIndex(input: {
       id: c.id,
       title: c.contractNumber,
       subtitle: [clienteNome.get(c.customerId) ?? "—", c.status].filter(Boolean).join(" · "),
-      keywords: [c.priceIndexer, String(c.monthlyAmount)].filter(Boolean),
+      keywords: [c.priceIndexer, String(c.monthlyAmount)].filter(Boolean) as string[],
       target: { to: "/contratos/$id", params: { id: c.id } },
     });
   }
