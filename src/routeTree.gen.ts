@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TecnicosRouteImport } from './routes/tecnicos'
 import { Route as SuporteRouteImport } from './routes/suporte'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -18,6 +19,7 @@ import { Route as OsRouteImport } from './routes/os'
 import { Route as OrcamentosRouteImport } from './routes/orcamentos'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as InstalacoesRouteImport } from './routes/instalacoes'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EquipamentosRouteImport } from './routes/equipamentos'
@@ -39,6 +41,11 @@ import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as AtivosIdRouteImport } from './routes/ativos.$id'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 
+const TecnicosRoute = TecnicosRouteImport.update({
+  id: '/tecnicos',
+  path: '/tecnicos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuporteRoute = SuporteRouteImport.update({
   id: '/suporte',
   path: '/suporte',
@@ -82,6 +89,11 @@ const LoginRoute = LoginRouteImport.update({
 const LeadsRoute = LeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstalacoesRoute = InstalacoesRouteImport.update({
+  id: '/instalacoes',
+  path: '/instalacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
@@ -197,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/equipamentos': typeof EquipamentosRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
+  '/instalacoes': typeof InstalacoesRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/orcamentos': typeof OrcamentosRouteWithChildren
@@ -206,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
+  '/tecnicos': typeof TecnicosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -228,6 +242,7 @@ export interface FileRoutesByTo {
   '/equipamentos': typeof EquipamentosRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
+  '/instalacoes': typeof InstalacoesRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/orcamentos': typeof OrcamentosRouteWithChildren
@@ -237,6 +252,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
+  '/tecnicos': typeof TecnicosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -260,6 +276,7 @@ export interface FileRoutesById {
   '/equipamentos': typeof EquipamentosRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
+  '/instalacoes': typeof InstalacoesRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/orcamentos': typeof OrcamentosRouteWithChildren
@@ -269,6 +286,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
+  '/tecnicos': typeof TecnicosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -293,6 +311,7 @@ export interface FileRouteTypes {
     | '/equipamentos'
     | '/estoque'
     | '/financeiro'
+    | '/instalacoes'
     | '/leads'
     | '/login'
     | '/orcamentos'
@@ -302,6 +321,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/suporte'
+    | '/tecnicos'
     | '/admin/usuarios'
     | '/ativos/$id'
     | '/clientes/$id'
@@ -324,6 +344,7 @@ export interface FileRouteTypes {
     | '/equipamentos'
     | '/estoque'
     | '/financeiro'
+    | '/instalacoes'
     | '/leads'
     | '/login'
     | '/orcamentos'
@@ -333,6 +354,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/suporte'
+    | '/tecnicos'
     | '/admin/usuarios'
     | '/ativos/$id'
     | '/clientes/$id'
@@ -355,6 +377,7 @@ export interface FileRouteTypes {
     | '/equipamentos'
     | '/estoque'
     | '/financeiro'
+    | '/instalacoes'
     | '/leads'
     | '/login'
     | '/orcamentos'
@@ -364,6 +387,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/suporte'
+    | '/tecnicos'
     | '/admin/usuarios'
     | '/ativos/$id'
     | '/clientes/$id'
@@ -387,6 +411,7 @@ export interface RootRouteChildren {
   EquipamentosRoute: typeof EquipamentosRoute
   EstoqueRoute: typeof EstoqueRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  InstalacoesRoute: typeof InstalacoesRoute
   LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
   OrcamentosRoute: typeof OrcamentosRouteWithChildren
@@ -396,11 +421,19 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   SuporteRoute: typeof SuporteRouteWithChildren
+  TecnicosRoute: typeof TecnicosRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tecnicos': {
+      id: '/tecnicos'
+      path: '/tecnicos'
+      fullPath: '/tecnicos'
+      preLoaderRoute: typeof TecnicosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/suporte': {
       id: '/suporte'
       path: '/suporte'
@@ -462,6 +495,13 @@ declare module '@tanstack/react-router' {
       path: '/leads'
       fullPath: '/leads'
       preLoaderRoute: typeof LeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/instalacoes': {
+      id: '/instalacoes'
+      path: '/instalacoes'
+      fullPath: '/instalacoes'
+      preLoaderRoute: typeof InstalacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/financeiro': {
@@ -700,6 +740,7 @@ const rootRouteChildren: RootRouteChildren = {
   EquipamentosRoute: EquipamentosRoute,
   EstoqueRoute: EstoqueRoute,
   FinanceiroRoute: FinanceiroRoute,
+  InstalacoesRoute: InstalacoesRoute,
   LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
   OrcamentosRoute: OrcamentosRouteWithChildren,
@@ -709,6 +750,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   SuporteRoute: SuporteRouteWithChildren,
+  TecnicosRoute: TecnicosRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
 }
 export const routeTree = rootRouteImport
