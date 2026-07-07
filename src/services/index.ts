@@ -11,6 +11,11 @@ import { ticketService } from "./tickets";
 import { inventoryService } from "./inventory";
 import { financeService } from "./finance";
 import { adminService } from "./admin";
+import { equipmentService } from "./equipment";
+import { starlinkAccountService } from "./starlinkAccounts";
+import { installationService } from "./installations";
+import { documentService } from "./documents";
+import { technicianService } from "./technicians";
 
 /**
  * Camada de serviços por domínio unificada.
@@ -29,6 +34,11 @@ export const services = {
   inventory: inventoryService,
   finance: financeService,
   admin: adminService,
+  equipment: equipmentService,
+  starlinkAccounts: starlinkAccountService,
+  installations: installationService,
+  documents: documentService,
+  technicians: technicianService,
 };
 
 export type Services = typeof services;
@@ -47,3 +57,8 @@ export * from "./inventory";
 export * from "./finance";
 export * from "./admin";
 export * from "./http";
+export * from "./equipment";
+export * from "./starlinkAccounts";
+export * from "./installations";
+export * from "./documents";
+export * from "./technicians";
