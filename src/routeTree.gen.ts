@@ -23,6 +23,7 @@ import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EquipamentosRouteImport } from './routes/equipamentos'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContratosRouteImport } from './routes/contratos'
+import { Route as ContasStarlinkRouteImport } from './routes/contas-starlink'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
@@ -108,6 +109,11 @@ const ContratosRoute = ContratosRouteImport.update({
   path: '/contratos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContasStarlinkRoute = ContasStarlinkRouteImport.update({
+  id: '/contas-starlink',
+  path: '/contas-starlink',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
+  '/contas-starlink': typeof ContasStarlinkRoute
   '/contratos': typeof ContratosRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/equipamentos': typeof EquipamentosRoute
@@ -215,6 +222,7 @@ export interface FileRoutesByTo {
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
+  '/contas-starlink': typeof ContasStarlinkRoute
   '/contratos': typeof ContratosRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/equipamentos': typeof EquipamentosRoute
@@ -246,6 +254,7 @@ export interface FileRoutesById {
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
+  '/contas-starlink': typeof ContasStarlinkRoute
   '/contratos': typeof ContratosRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/equipamentos': typeof EquipamentosRoute
@@ -278,6 +287,7 @@ export interface FileRouteTypes {
     | '/catalogo'
     | '/clientes'
     | '/configuracoes'
+    | '/contas-starlink'
     | '/contratos'
     | '/dashboard'
     | '/equipamentos'
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/catalogo'
     | '/clientes'
     | '/configuracoes'
+    | '/contas-starlink'
     | '/contratos'
     | '/dashboard'
     | '/equipamentos'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/catalogo'
     | '/clientes'
     | '/configuracoes'
+    | '/contas-starlink'
     | '/contratos'
     | '/dashboard'
     | '/equipamentos'
@@ -369,6 +381,7 @@ export interface RootRouteChildren {
   CatalogoRoute: typeof CatalogoRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  ContasStarlinkRoute: typeof ContasStarlinkRoute
   ContratosRoute: typeof ContratosRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   EquipamentosRoute: typeof EquipamentosRoute
@@ -484,6 +497,13 @@ declare module '@tanstack/react-router' {
       path: '/contratos'
       fullPath: '/contratos'
       preLoaderRoute: typeof ContratosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contas-starlink': {
+      id: '/contas-starlink'
+      path: '/contas-starlink'
+      fullPath: '/contas-starlink'
+      preLoaderRoute: typeof ContasStarlinkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuracoes': {
@@ -674,6 +694,7 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogoRoute: CatalogoRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  ContasStarlinkRoute: ContasStarlinkRoute,
   ContratosRoute: ContratosRouteWithChildren,
   DashboardRoute: DashboardRoute,
   EquipamentosRoute: EquipamentosRoute,
