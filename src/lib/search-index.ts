@@ -8,6 +8,9 @@ import type { ServiceOrder } from "@/types/serviceOrder";
 import type { Asset } from "@/types/asset";
 import type { SupportTicket } from "@/types/ticket";
 import type { CatalogItem } from "@/types/catalog";
+import type { Equipment } from "@/types/equipment";
+import type { StarlinkAccount } from "@/types/starlinkAccount";
+import type { Installation } from "@/types/installation";
 import type { GlobalSearchItem } from "@/lib/search";
 
 export function buildGlobalSearchIndex(input: {
@@ -21,6 +24,9 @@ export function buildGlobalSearchIndex(input: {
   ativos: Asset[];
   tickets: SupportTicket[];
   catalogo: CatalogItem[];
+  equipamentos?: Equipment[];
+  contasStarlink?: StarlinkAccount[];
+  instalacoes?: Installation[];
 }) {
   const clienteNome = new Map(input.clientes.map((c) => [c.id, c.legalName]));
 
@@ -133,6 +139,42 @@ export function buildGlobalSearchIndex(input: {
       title: `${i.itemCode} — ${i.name}`,
       subtitle: [i.itemType, i.isActive ? "ativo" : "inativo"].filter(Boolean).join(" · "),
       target: { to: "/catalogo" },
+    });
+  }
+
+  for (const e of input.equipamentos ?? []) {
+    items.push({
+      kind: "equipamento",
+      id: e.id,
+      title: e.serialNumber || e.kitId || e.model || "Equipamento",
+      subtitle: [e.model, clienteNome.get(e.customerId ?? "") ?? "Sem cliente", e.status]
+        .filter(Boolean)
+        .join(" · "),
+      keywords: [e.kitId, e.pn, e.dishModel].filter(Boolean) as string[],
+      target: { to: "/equipamentos" },
+    });
+  }
+
+  for (const a of input.contasStarlink ?? []) {
+    items.push({
+      kind: "conta-starlink",
+      id: a.id,
+      title: a.glCode,
+      subtitle: [a.gmailAlias, clienteNome.get(a.customerId ?? "") ?? "Sem cliente", a.status]
+        .filter(Boolean)
+        .join(" · "),
+      keywords: [a.plan, a.recoveryEmail].filter(Boolean) as string[],
+      target: { to: "/contas-starlink" },
+    });
+  }
+
+  for (const inst of input.instalacoes ?? []) {
+    items.push({
+      kind: "instalacao",
+      id: inst.id,
+      title: `Instalação ${clienteNome.get(inst.customerId) ?? ""}`.trim(),
+      subtitle: [inst.status, inst.scheduledAt ?? ""].filter(Boolean).join(" · "),
+      target: { to: "/instalacoes" },
     });
   }
 
