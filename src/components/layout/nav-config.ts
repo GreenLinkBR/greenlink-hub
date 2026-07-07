@@ -13,6 +13,9 @@ import {
   LifeBuoy,
   Settings,
   Cpu,
+  Satellite,
+  HardHat,
+  CalendarCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,6 +44,10 @@ export const navGroups: NavGroup[] = [
       { title: "Contratos", url: "/contratos", icon: FileSignature },
       { title: "Ordens de Serviço", url: "/os", icon: Wrench },
       { title: "Ativos", url: "/ativos", icon: Cpu },
+      { title: "Equipamentos", url: "/equipamentos", icon: Cpu },
+      { title: "Contas Starlink", url: "/contas-starlink", icon: Satellite },
+      { title: "Instalações", url: "/instalacoes", icon: CalendarCheck },
+      { title: "Técnicos", url: "/tecnicos", icon: HardHat },
       { title: "Estoque", url: "/estoque", icon: Boxes },
     ],
   },
