@@ -8,7 +8,10 @@ export type GlobalSearchKind =
   | "os"
   | "ativo"
   | "ticket"
-  | "catalogo";
+  | "catalogo"
+  | "equipamento"
+  | "conta-starlink"
+  | "instalacao";
 
 export type GlobalSearchTarget = { to: string; params?: Record<string, string> };
 
