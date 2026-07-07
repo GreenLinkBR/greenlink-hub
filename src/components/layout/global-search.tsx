@@ -22,6 +22,9 @@ import {
   useAssets,
   useTickets,
   useCatalog,
+  useEquipmentList,
+  useStarlinkAccounts,
+  useInstallations,
 } from "@/hooks/domain";
 import { buildGlobalSearchIndex } from "@/lib/search-index";
 import { filterGlobalSearchItems, groupGlobalSearchItems } from "@/lib/search";
@@ -37,6 +40,8 @@ import {
   Users,
   Wrench,
   Package,
+  Satellite,
+  CalendarCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -51,6 +56,9 @@ const kindLabel: Record<string, string> = {
   ativo: "Ativos",
   ticket: "Suporte",
   catalogo: "Catálogo",
+  equipamento: "Equipamentos",
+  "conta-starlink": "Contas Starlink",
+  instalacao: "Instalações",
 };
 
 const kindIcon: Record<string, LucideIcon> = {
@@ -64,6 +72,9 @@ const kindIcon: Record<string, LucideIcon> = {
   ativo: Cpu,
   ticket: LifeBuoy,
   catalogo: Package,
+  equipamento: Cpu,
+  "conta-starlink": Satellite,
+  instalacao: CalendarCheck,
 };
 
 export function GlobalSearch() {
@@ -78,6 +89,9 @@ export function GlobalSearch() {
   const { data: ativos = [] } = useAssets();
   const { data: tickets = [] } = useTickets();
   const { data: catalogo = [] } = useCatalog();
+  const { data: equipamentos = [] } = useEquipmentList();
+  const { data: contasStarlink = [] } = useStarlinkAccounts();
+  const { data: instalacoes = [] } = useInstallations();
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -113,6 +127,9 @@ export function GlobalSearch() {
         ativos,
         tickets,
         catalogo,
+        equipamentos,
+        contasStarlink,
+        instalacoes,
       }),
     [
       clientes,
@@ -125,6 +142,9 @@ export function GlobalSearch() {
       ativos,
       tickets,
       catalogo,
+      equipamentos,
+      contasStarlink,
+      instalacoes,
     ],
   );
 
