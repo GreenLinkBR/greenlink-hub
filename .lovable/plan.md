@@ -1,67 +1,46 @@
-# Plano — GreenLink v2: Starlink, UI e OCR
+# Entrega 3 — Wizard "Novo Cliente" com OCR
 
-Estender o schema atual (sem remover nada) para o domínio Starlink e entregar as UIs novas + wizard de cadastro com OCR. Dividido em 3 entregas sequenciais para validar cada uma antes de seguir.
+Última entrega do escopo Starlink. Cria um fluxo guiado de 5 passos em `/clientes/novo` que usa OCR (Lovable AI Gateway, `google/gemini-2.5-flash`) para pré-preencher os dados a partir de CNH, conta de energia e etiqueta Starlink, e ao final cria em transação: `customer` + `customer_documents` + `equipment` + `starlink_accounts` + `installations`.
 
-## Entrega 1 — Schema Starlink (migração única)
+## O que será entregue
 
-Novas tabelas em `public` (com GRANTs, RLS via `is_staff()` / `has_role('admin')`, triggers `touch_updated_at`):
+1. **Edge Function `ocr-extract`** (`supabase/functions/ocr-extract/index.ts`)
+   - Entrada: `{ file_url, doc_type: "cnh" | "energy_bill" | "starlink_label" }`.
+   - Baixa o arquivo do bucket privado `customer-docs` via signed URL, envia como `image_url` para o gateway com `Output.object` (schema por tipo).
+   - Retorna JSON estruturado + persiste em `customer_documents.ocr_data`.
+   - CORS + validação Zod + auth via JWT.
 
-- **equipment** — `customer_id` → customers, `model`, `serial_number` (UNIQUE), `kit_id` (UNIQUE), `dish_model`, `pn`, `power_source`, `warranty_until`, `installed_at`, `status` (`in_stock|installed|maintenance|retired`), `notes`.
-- **starlink_accounts** — `gl_code` (UNIQUE, gerado por sequência `GL-001`), `customer_id`, `equipment_id`, `gmail_alias` (UNIQUE, `greennetantenas+N@gmail.com`), `is_primary_account`, `plan`, `status`, `activated_at`, `customer_has_access` bool, `recovery_email`, `recovery_phone`, `notes`.
-- **installations** — `customer_id`, `equipment_id`, `technician_id` (→ profiles), `scheduled_at`, `executed_at`, `checklist` jsonb, `photos_before` jsonb, `photos_after` jsonb, `signature_url`, `gps_lat`, `gps_lng`, `status` (`scheduled|in_progress|done|cancelled`), `notes`.
-- **customer_documents** — `customer_id`, `doc_type` (`cnh|energy_bill|starlink_label|other`), `file_url`, `ocr_data` jsonb, `uploaded_by`, `uploaded_at`.
-- **technicians_view** (VIEW) — agrega KPIs por técnico (instalações realizadas, tempo médio, avaliação futura).
-- Sequência + função `next_gl_code()` e `next_gmail_alias()` (SECURITY DEFINER).
+2. **Upload helper** (`src/lib/storage.ts`)
+   - `uploadCustomerDoc(file, customerId?, docType)` → sobe para `customer-docs/{tempId|customerId}/{docType}-{ts}.ext` e devolve `{ path, signedUrl }`.
 
-Extensões em tabelas existentes:
+3. **Rota `/clientes/novo`** (`src/routes/clientes.novo.tsx`) — stepper com 5 passos:
+   - **1. CNH**: upload → OCR → campos editáveis (nome, CPF, nascimento).
+   - **2. Conta de energia**: upload → OCR → endereço, cidade, UF, CEP, lat/lng (manual se sem geocode).
+   - **3. Etiqueta Starlink**: upload → OCR → modelo, SN, KIT ID, PN.
+   - **4. Plano & instalação**: escolhe plano, data agendada, técnico (opcional), notas.
+   - **5. Revisão**: mostra `GL-XXXXX` e alias `greennetantenas+N@gmail.com` que serão gerados (via RPC `next_gl_code` / `next_gmail_alias`) e confirma.
 
-- **customers**: `birth_date`, `cpf_cnpj` (UNIQUE parcial), `latitude`, `longitude`, `city`, `state`, `notes` (se faltar).
-- **profiles**: já cobre técnicos; adicionar role `technician` no enum `app_role` se necessário e usar em RLS de installations.
+4. **Criação transacional** (`src/services/customerOnboarding.ts`)
+   - Sequência: `customers.insert` → move docs do temp para `{customerId}/…` e insere `customer_documents` (com `ocr_data`) → `equipment.insert` → `starlink_accounts.insert` (gl_code/alias via defaults do banco) → `installations.insert` com `status='scheduled'`.
+   - Rollback simples: se qualquer passo falhar, remove o `customer` criado (cascade limpa o resto).
 
-Bucket de storage `customer-docs` (privado) para fotos/documentos, com policies por dono.
-
-## Entrega 2 — UI dos novos módulos
-
-Rotas TanStack novas em `src/routes/`:
-
-- `equipamentos.tsx` + `equipamentos.$id.tsx` — lista, filtros por SN/KIT ID/status, formulário.
-- `contas-starlink.tsx` + `contas-starlink.$id.tsx` — lista com GL-code, alias, cliente, plano.
-- `instalacoes.tsx` + `instalacoes.$id.tsx` — agenda, checklist, upload fotos antes/depois, mapa GPS, assinatura (canvas).
-- `tecnicos.tsx` — ranking com KPIs.
-- `clientes.$id.tsx` — adicionar abas Equipamentos / Contas Starlink / Instalações / Documentos.
-
-Novos services em `src/services/`: `equipment.ts`, `starlinkAccounts.ts`, `installations.ts`, `documents.ts`. Hooks em `src/hooks/domain/`.
-
-Busca global (`src/lib/search.ts`): indexar SN, KIT ID, GL-code, CPF, alias, cidade.
-
-Navegação: adicionar itens no `nav-config.ts` e sidebar.
-
-## Entrega 3 — Wizard "Novo Cliente" com OCR
-
-Rota: `clientes.novo.tsx` — stepper de 5 passos.
-
-1. Upload CNH → OCR → preenche nome, CPF, nascimento.
-2. Upload conta de energia → OCR → preenche endereço, cidade, CEP, geocode (lat/lng via Google Maps se conectado, senão manual).
-3. Upload etiqueta Starlink → OCR → preenche modelo, SN, KIT ID.
-4. Revisão + geração automática: próximo `GL-XXX`, próximo alias `greennetantenas+N@gmail.com`.
-5. Confirma → cria em transação: customer + document + equipment + starlink_account + installation (agendada).
-
-OCR via **Lovable AI Gateway** com `google/gemini-2.5-flash` (multimodal, sem chave extra). Server function `src/lib/ocr.functions.ts` recebe `{ file_url, doc_type }`, chama gateway com schema JSON estruturado por tipo, salva `ocr_data` em `customer_documents`.
-
-Feedback: `LoadingState` durante OCR, campos editáveis após extração (usuário sempre pode corrigir).
+5. **UI/UX**
+   - Componentes shadcn existentes (`Card`, `Stepper` custom simples, `Input`, `Button`, `Dialog`).
+   - `LoadingState` durante OCR, toast de erro com mensagem do gateway (429/402 tratados).
+   - Botão "Novo cliente" adicionado em `/clientes`.
 
 ## Detalhes técnicos
 
-- Todas migrações seguem o padrão CREATE TABLE → GRANT (`authenticated`, `service_role`) → ENABLE RLS → CREATE POLICY. Nenhuma policy `TO anon` — sistema é interno.
-- RLS: staff (`is_staff(auth.uid())`) tem CRUD; `technician` vê apenas suas installations (`technician_id = auth.uid()`).
-- Storage: bucket `customer-docs` privado, upload via `supabase.storage`, policies apenas `authenticated` + `is_staff`.
-- OCR roda como `createServerFn` autenticada (`requireSupabaseAuth`), nunca no browser.
-- Integrações externas (n8n, WhatsApp, Drive, Calendar) ficam fora desta rodada — o schema já suporta ligá-las depois via webhooks.
+- OCR schemas (Zod) por tipo, com todos os campos `.nullable()` (regra do gateway para OpenAI-compat; Gemini aceita, mantemos por consistência).
+- Prompt do sistema em pt-BR pedindo extração literal, sem inferência.
+- MIME real do upload é passado no `image_url` (data URL base64) — nada de hardcode `application/pdf`.
+- Nenhuma mudança de schema — tudo já existe da Entrega 1.
+- Nenhum dado mocado; se OCR falhar o usuário edita manualmente e segue.
 
-## Ordem de execução
+## Fora do escopo
 
-1. Migração única com tudo de Entrega 1. **Pausa para você aprovar.**
-2. Após aprovar, aplico services + hooks + rotas da Entrega 2.
-3. Por fim, wizard + OCR da Entrega 3.
+- Geocode automático (Google Maps) — campos lat/lng ficam manuais nesta rodada.
+- Assinatura digital no wizard (fica na tela de instalação).
+- Integrações n8n/WhatsApp/Drive/Calendar.
 
-Posso começar pela Entrega 1?
+Posso implementar?
