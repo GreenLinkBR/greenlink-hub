@@ -37,6 +37,7 @@ import { Route as OsIdRouteImport } from './routes/os.$id'
 import { Route as OrcamentosNovoRouteImport } from './routes/orcamentos.novo'
 import { Route as OrcamentosIdRouteImport } from './routes/orcamentos.$id'
 import { Route as ContratosIdRouteImport } from './routes/contratos.$id'
+import { Route as ClientesNovoRouteImport } from './routes/clientes.novo'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as AtivosIdRouteImport } from './routes/ativos.$id'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
@@ -181,6 +182,11 @@ const ContratosIdRoute = ContratosIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ContratosRoute,
 } as any)
+const ClientesNovoRoute = ClientesNovoRouteImport.update({
+  id: '/novo',
+  path: '/novo',
+  getParentRoute: () => ClientesRoute,
+} as any)
 const ClientesIdRoute = ClientesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -223,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/clientes/novo': typeof ClientesNovoRoute
   '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/clientes/novo': typeof ClientesNovoRoute
   '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
@@ -290,6 +298,7 @@ export interface FileRoutesById {
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/clientes/novo': typeof ClientesNovoRoute
   '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
@@ -325,6 +334,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/ativos/$id'
     | '/clientes/$id'
+    | '/clientes/novo'
     | '/contratos/$id'
     | '/orcamentos/$id'
     | '/orcamentos/novo'
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/ativos/$id'
     | '/clientes/$id'
+    | '/clientes/novo'
     | '/contratos/$id'
     | '/orcamentos/$id'
     | '/orcamentos/novo'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/ativos/$id'
     | '/clientes/$id'
+    | '/clientes/novo'
     | '/contratos/$id'
     | '/orcamentos/$id'
     | '/orcamentos/novo'
@@ -623,6 +635,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContratosIdRouteImport
       parentRoute: typeof ContratosRoute
     }
+    '/clientes/novo': {
+      id: '/clientes/novo'
+      path: '/novo'
+      fullPath: '/clientes/novo'
+      preLoaderRoute: typeof ClientesNovoRouteImport
+      parentRoute: typeof ClientesRoute
+    }
     '/clientes/$id': {
       id: '/clientes/$id'
       path: '/$id'
@@ -660,10 +679,12 @@ const AtivosRouteWithChildren =
 
 interface ClientesRouteChildren {
   ClientesIdRoute: typeof ClientesIdRoute
+  ClientesNovoRoute: typeof ClientesNovoRoute
 }
 
 const ClientesRouteChildren: ClientesRouteChildren = {
   ClientesIdRoute: ClientesIdRoute,
+  ClientesNovoRoute: ClientesNovoRoute,
 }
 
 const ClientesRouteWithChildren = ClientesRoute._addFileChildren(

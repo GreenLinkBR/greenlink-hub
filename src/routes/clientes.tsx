@@ -114,6 +114,12 @@ function ClientesPage() {
         title="Clientes"
         description={`${customers.length} cadastrados`}
         actions={
+          <>
+            <Button asChild variant="outline">
+              <Link to="/clientes/novo">
+                <Plus className="h-4 w-4 mr-1" /> Cadastro guiado
+              </Link>
+            </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -211,6 +217,7 @@ function ClientesPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </>
         }
       />
       <Dialog
